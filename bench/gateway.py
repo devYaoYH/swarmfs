@@ -7,10 +7,9 @@ from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
-import httpx
-
-from bench.budget import MODEL, Budget, BudgetExceeded
+from bench.budget import Budget, BudgetExceeded
 from bench.context import TrailPresenter
+from bench.llm import ModelClient
 from swarmfs.trails import TrailStore
 
 
@@ -23,13 +22,13 @@ class Gateway(ThreadingHTTPServer):
         *,
         trails: TrailStore,
         budget: Budget,
-        key: str,
+        llm: ModelClient,
         tokens: dict[str, str],
         half_life: float = 300,
-        upstream=None,
     ):
-        self.trails, self.budget, self.key, self.tokens = trails, budget, key, tokens
-        self.upstream = upstream or httpx.Client(timeout=180, trust_env=False)
+        self.trails, self.budget, self.llm, self.tokens = trails, budget, llm, tokens
+        if budget.model != llm.config.model:
+            raise ValueError("gateway and budget must use the same configured model")
         self.presenter = TrailPresenter(trails)
         self.half_life = half_life
         self.visible_actors = set()
@@ -83,27 +82,17 @@ class Handler(BaseHTTPRequestHandler):
                 episode = actor.rsplit(":", 1)[0]
                 block = self.server.presenter.block(episode, actor, half_life=self.server.half_life)
                 self.reply(200, {"block": block})
-            elif route in {"/v1/chat/completions", "/v1/responses"}:
-                self.model_request(actor, route, payload)
+            elif route == "/v1/chat/completions":
+                self.model_request(actor, payload)
             else:
                 self.reply(404, {"error": {"message": "unsupported route"}})
         except BudgetExceeded as exc:
             self.reply(402, {"error": {"message": str(exc), "type": "pilot_budget"}})
         except (ValueError, KeyError, TypeError) as exc:
             self.reply(400, {"error": {"message": str(exc), "type": "invalid_request"}})
-        except httpx.HTTPError:
-            self.reply(502, {"error": {"message": "upstream transport failed; reservation kept"}})
 
-    def model_request(self, actor: str, route: str, payload: dict):
-        if payload.get("stream"):
-            raise ValueError("pilot gateway requires non-streaming model requests")
-        payload["model"] = payload.get("model", "").removeprefix("openai/")
-        if payload["model"] != MODEL:
-            raise ValueError("model differs from the requested gpt-6-luna")
-        if route.endswith("chat/completions"):
-            # This pinned SDK omits "none" for models absent from its model table.
-            # Enforce the endpoint-compatible setting at the final request boundary.
-            payload["reasoning_effort"] = "none"
+    def model_request(self, actor: str, payload: dict):
+        payload = self.server.llm.prepare(payload)
         block = ""
         with self.server.call_lock:
             self.server.calls[actor] += 1
@@ -115,34 +104,18 @@ class Handler(BaseHTTPRequestHandler):
                 actor.rsplit(":", 1)[0], actor, half_life=self.server.half_life
             )
             if block:
-                if route.endswith("chat/completions"):
-                    payload["messages"].append({"role": "user", "content": block})
-                elif isinstance(payload.get("input"), list):
-                    payload["input"].append({"role": "user", "content": block})
-                else:
-                    block = ""
+                payload["messages"].append({"role": "user", "content": block})
         identity = self.server.budget.reserve(actor, payload)
-        response = self.server.upstream.post(
-            "https://api.openai.com" + route,
-            headers={"Authorization": "Bearer " + self.server.key},
-            json=payload,
-        )
-        if not response.is_success:
-            # An API rejection is not a completed generation. Keep its reservation
-            # conservatively and return only status, never arbitrary upstream details.
-            try:
-                message = str(response.json().get("error", {}).get("message", "rejected"))
-            except ValueError:
-                message = "rejected"
-            message = message.replace(self.server.key, "[redacted]")[:400]
-            self.server.errors.append(
-                {"actor": actor, "status": response.status_code, "message": message}
-            )
-            self.reply(
-                response.status_code, {"error": {"message": message, "type": "upstream_error"}}
-            )
+        try:
+            data = self.server.llm.complete(payload)
+        except Exception as exc:
+            status = getattr(exc, "status_code", 502)
+            if not isinstance(status, int) or not 400 <= status <= 599:
+                status = 502
+            message = str(exc).replace(self.server.llm.key, "[redacted]")[:400]
+            self.server.errors.append({"actor": actor, "status": status, "message": message})
+            self.reply(status, {"error": {"message": message, "type": "upstream_error"}})
             return
-        data = response.json()
         self.server.budget.settle(identity, data)
         if block:
             with self.server.trails.connect() as db:

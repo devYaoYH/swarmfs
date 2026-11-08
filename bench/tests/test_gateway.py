@@ -1,43 +1,44 @@
 import json
 import threading
+from types import SimpleNamespace
 
 import httpx
 
-from bench.budget import MODEL, Budget
 from bench.gateway import Gateway
+from bench.llm import MODEL_ALIAS, ModelClient
 from swarmfs.trails import TrailStore
 
 
-def test_offline_gateway_auth_routing_usage_and_model_guard(tmp_path):
+def test_offline_gateway_auth_routing_usage_and_model_guard(tmp_path, make_budget, luna_config):
     seen = []
 
-    def upstream(request):
+    def upstream(**request):
         seen.append(request)
-        assert request.headers["authorization"] == "Bearer fake-key-never-live"
-        assert json.loads(request.content)["reasoning_effort"] == "none"
-        return httpx.Response(
-            200,
-            json={
+        assert request["api_key"] == "fake-key-never-live"
+        assert request["reasoning_effort"] == "none"
+        if request["messages"] == [{"role": "user", "content": "fail"}]:
+            raise RuntimeError("mock failure with fake-key-never-live")
+        return SimpleNamespace(
+            model_dump=lambda **_: {
                 "id": "mock",
                 "choices": [],
                 "usage": {"prompt_tokens": 12, "completion_tokens": 4},
-            },
+            }
         )
 
-    budget = Budget(str(tmp_path / "budget.db"))
+    budget = make_budget()
     service = Gateway(
         ("127.0.0.1", 0),
         trails=TrailStore(str(tmp_path / "trails.db")),
         budget=budget,
-        key="fake-key-never-live",
+        llm=ModelClient(luna_config, "fake-key-never-live", completion=upstream),
         tokens={"a": "pair:a", "b": "pair:b"},
-        upstream=httpx.Client(transport=httpx.MockTransport(upstream)),
     )
     thread = threading.Thread(target=service.serve_forever, daemon=True)
     thread.start()
     try:
         with httpx.Client(base_url=f"http://127.0.0.1:{service.server_port}", trust_env=False) as c:
-            body = {"model": MODEL, "messages": [], "max_completion_tokens": 16}
+            body = {"model": MODEL_ALIAS, "messages": [], "max_completion_tokens": 16}
             assert c.post("/v1/chat/completions", json=body).status_code == 401
             response = c.post(
                 "/v1/chat/completions", json=body, headers={"Authorization": "Bearer a"}
@@ -62,7 +63,7 @@ def test_offline_gateway_auth_routing_usage_and_model_guard(tmp_path):
             c.post("/events", json=event, headers={"Authorization": "Bearer a"})
             service.visible_actors.add("pair:b")
             body = {
-                "model": MODEL,
+                "model": MODEL_ALIAS,
                 "messages": [],
                 "max_completion_tokens": 16,
                 "tools": [{"type": "function", "function": {"name": "test_tool"}}],
@@ -72,10 +73,24 @@ def test_offline_gateway_auth_routing_usage_and_model_guard(tmp_path):
                     "/v1/chat/completions", json=body, headers={"Authorization": "Bearer b"}
                 )
                 assert response.status_code == 200
-            assert json.loads(seen[-2].content)["messages"] == []
-            assert "src/b.py" in json.loads(seen[-1].content)["messages"][-1]["content"]
+            assert seen[-2]["messages"] == []
+            assert "src/b.py" in seen[-1]["messages"][-1]["content"]
             with service.trails.connect() as db:
                 assert db.execute("SELECT COUNT(*) FROM delivered").fetchone()[0] == 1
+            failed = c.post(
+                "/v1/chat/completions",
+                headers={"Authorization": "Bearer a"},
+                json={
+                    "model": MODEL_ALIAS,
+                    "messages": [{"role": "user", "content": "fail"}],
+                    "max_tokens": 16,
+                },
+            )
+            assert failed.status_code == 502
+            assert "fake-key-never-live" not in failed.text
+            assert "[redacted]" in failed.text
+            actors = {a["actor"]: a for a in budget.snapshot()["agents"]}
+            assert actors["pair:a"]["unsettled_requests"] == 1
     finally:
         service.shutdown()
         service.server_close()

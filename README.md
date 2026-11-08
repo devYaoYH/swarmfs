@@ -48,7 +48,7 @@ peer's edit exists in the reader's workspace. [Core design](docs/design.md).
 ## Run the benchmark
 
 Follow [benchmark setup](docs/benchmark.md) to fetch the pinned public task inputs
-and configure `OPENAI_API_KEY` in the ignored `.env` file. Then run:
+and configure the selected provider's key in the ignored `.env` file. Then run:
 
 ```sh
 uv run swarm-trails prepare
@@ -57,15 +57,26 @@ uv run swarm-trails pilot    # Paid model calls with persistent spending limits
 uv run swarm-trails report
 ```
 
-The pilot uses `gpt-6-luna` through OpenHands SDK, with a $4 total gateway limit
-and $0.20 per-agent allowance. Agents receive disposable gateway credentials;
-the OpenAI key stays on the host. Inspect [pilot.toml](pilot.toml) before running.
-Completed attempts resume by experiment ID; generated logs and ledgers stay in
-the ignored `artifacts/` directory.
+Provider calls use the **LiteLLM Python SDK in the host process**. The default
+[profile](pilot.toml) selects GPT-6 Luna; an [OpenRouter profile](bench/configs/openrouter.toml)
+selects DeepSeek V4.1 Flash. Both use OpenHands SDK as the agent harness.
+
+With `OPENROUTER_API_KEY` set, check function calling without Docker:
+
+```sh
+uv run swarm-trails smoke --config bench/configs/openrouter.toml
+```
+
+This makes two tiny paid calls with a one-cent allowance. The same `--config` option
+works with `prepare`, `verify`, `pilot` and `report`. [Model configuration](docs/models.md).
+The shared spending ledger is capped at $4, with smaller per-agent profile limits.
+Provider keys stay on the host; agents receive disposable gateway credentials.
+Generated logs and ledgers stay in the ignored `artifacts/` directory.
 
 ## Preliminary benchmark results
 
-Four pair attempts: two Jinja feature pairs, one attempt per pair in each arm.
+Original GPT-6 Luna pilot: four pair attempts, with two Jinja feature pairs and
+one attempt per pair in each arm.
 Both arms retain native messaging; the baseline captures activity without showing it.
 
 | Arm | Joint completion | Total input + output tokens | Conservative cost |

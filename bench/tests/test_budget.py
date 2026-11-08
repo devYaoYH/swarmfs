@@ -1,8 +1,11 @@
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from bench.budget import MODEL, Budget, BudgetExceeded
+from bench.budget import BudgetExceeded
+
+MODEL = "openai/gpt-6-luna"
 
 
 def request(**overrides):
@@ -14,8 +17,8 @@ def request(**overrides):
     }
 
 
-def test_concurrent_reservations_cannot_overspend(tmp_path):
-    budget = Budget(str(tmp_path / "budget.db"), total=0.03, per_agent=0.03)
+def test_concurrent_reservations_cannot_overspend(make_budget):
+    budget = make_budget(total=0.03, per_agent=0.03)
 
     def reserve(_):
         try:
@@ -29,15 +32,15 @@ def test_concurrent_reservations_cannot_overspend(tmp_path):
     assert budget.snapshot()["conservative_usd"] <= 0.03
 
 
-def test_settlement_and_persistence(tmp_path):
+def test_settlement_and_persistence(tmp_path, make_budget):
     path = str(tmp_path / "budget.db")
-    budget = Budget(path)
+    budget = make_budget(path)
     identity = budget.reserve("a", request())
     reserved = budget.snapshot()["conservative_usd"]
     budget.settle(identity, None)
     assert budget.snapshot()["conservative_usd"] == reserved
     budget.settle(identity, {"usage": {"prompt_tokens": 100, "completion_tokens": 20}})
-    snapshot = Budget(path).snapshot()
+    snapshot = make_budget(path).snapshot()
     assert snapshot["conservative_usd"] == pytest.approx(0.000035)
     assert snapshot["agents"][0]["unsettled_requests"] == 0
 
@@ -52,8 +55,39 @@ def test_settlement_and_persistence(tmp_path):
         request(messages=[{"image_url": "x"}]),
     ],
 )
-def test_unbounded_requests_rejected(tmp_path, payload):
-    budget = Budget(str(tmp_path / "budget.db"))
+def test_unbounded_requests_rejected(make_budget, payload):
+    budget = make_budget()
     with pytest.raises(ValueError):
         budget.reserve("a", payload)
     assert budget.snapshot()["conservative_usd"] == 0
+
+
+def test_prices_are_frozen_per_request_and_reported_cost_is_not_discounted(make_budget):
+    original = make_budget()
+    identity = original.reserve("a", request())
+    other_model = make_budget(
+        model="openrouter/deepseek/test", input_usd_per_million=0.001, output_usd_per_million=0.001
+    )
+    other_model.settle(identity, {"usage": {"prompt_tokens": 100, "completion_tokens": 20}})
+    assert other_model.snapshot()["conservative_usd"] == pytest.approx(0.000035)
+    identity = other_model.reserve("b", request(model="openrouter/deepseek/test"))
+    other_model.settle(
+        identity, {"usage": {"prompt_tokens": 100, "completion_tokens": 20, "cost": 0.002}}
+    )
+    actors = {a["actor"]: a for a in other_model.snapshot()["agents"]}
+    assert actors["b"]["usd"] == 0.002
+    assert actors["b"]["provider_reported_usd"] == 0.002
+
+
+def test_existing_ledger_migration_keeps_unknown_old_charges(tmp_path, make_budget):
+    path = tmp_path / "legacy.db"
+    with sqlite3.connect(path) as db:
+        db.execute(
+            "CREATE TABLE requests (id TEXT PRIMARY KEY, actor TEXT, reserved REAL, "
+            "charged REAL, status TEXT, input_tokens INTEGER, output_tokens INTEGER)"
+        )
+        db.execute("INSERT INTO requests VALUES ('old', 'a', .01, .01, 'reserved', 0, 0)")
+    budget = make_budget(path)
+    budget.settle("old", {"usage": {"prompt_tokens": 0, "completion_tokens": 0}})
+    assert budget.snapshot()["conservative_usd"] == 0.01
+    assert budget.snapshot()["agents"][0]["unsettled_requests"] == 1

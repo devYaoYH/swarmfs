@@ -22,6 +22,10 @@ def summarize(results: list[dict], budget: dict) -> dict:
             "input_tokens": sum(a["input_tokens"] for a in actors),
             "output_tokens": sum(a["output_tokens"] for a in actors),
             "conservative_usd": sum(a["usd"] for a in actors),
+            "provider_reported_usd": sum(a.get("provider_reported_usd") or 0 for a in actors)
+            if any(a.get("provider_reported_usd") is not None for a in actors)
+            else None,
+            "reported_cost_requests": sum(a.get("reported_cost_requests", 0) for a in actors),
             "unsettled_requests": sum(a["unsettled_requests"] for a in actors),
             "errors": sum(bool(r.get("error") or r.get("upstream_errors")) for r in runs),
             "budget_cutoff_agents": sum(r.get("budget_cutoff_agents", 0) for r in runs),
@@ -32,6 +36,10 @@ def summarize(results: list[dict], budget: dict) -> dict:
         == {(r["task"], r["repetition"]) for r in results}
         for arm in arms
     ) and bool(results)
+    settings = {
+        json.dumps(r.get("llm", {"model": r.get("model")}), sort_keys=True) for r in results
+    }
+    matched = matched and len(settings) == 1
     delta = (
         arms["trails"]["success_percent"] - arms["baseline"]["success_percent"] if matched else None
     )
@@ -41,6 +49,7 @@ def summarize(results: list[dict], budget: dict) -> dict:
     return {
         "arms": arms,
         "matched": matched,
+        "models": sorted({r.get("model", "legacy") for r in results}),
         "success_delta_percentage_points": delta,
         "total_token_savings_percent": savings,
         "note": "Small exploratory pilot; paper baselines are context, not matched controls.",
@@ -60,7 +69,7 @@ def report(output: Path):
         )
     budget = json.loads((output / "budget.json").read_text())
     summary = summarize(results, budget)
-    summary["total_conservative_usd_including_calibration"] = budget["conservative_usd"]
+    summary["cumulative_gateway_conservative_usd"] = budget["conservative_usd"]
     with sqlite3.connect(output / "trails.db") as db:
         summary["captured_events"] = db.execute("SELECT COUNT(*) FROM events").fetchone()[0]
         blocks = [row[0] for row in db.execute("SELECT body FROM delivered")]
@@ -74,7 +83,7 @@ def report(output: Path):
     lines = [
         "# Preliminary CooperBench activity-trail pilot",
         "",
-        "GPT-6 Luna · OpenHands SDK · local Docker (amd64 emulation)",
+        "Models: " + ", ".join(summary["models"]) + " · OpenHands SDK · local Docker",
         "",
         "| Arm | Successful pairs | Success % | Input tokens | Output tokens | "
         "USD* | Budget / iteration cutoffs |",
@@ -99,7 +108,8 @@ def report(output: Path):
             f"Total token savings: {savings:.1f}%."
             if savings is not None
             else "Token comparison: unavailable (unmatched arms).",
-            f"Conservative total including calibration: ${budget['conservative_usd']:.4f}.",
+            f"Cumulative gateway ledger, including other experiments/setup: "
+            f"${budget['conservative_usd']:.4f}.",
             "",
             f"Captured file actions: {summary['captured_events']}; "
             f"trail blocks in successful API requests: {summary['delivered_blocks']}.",
@@ -108,7 +118,8 @@ def report(output: Path):
             "This pilot compares visible decaying trails with capture-only control; "
             "it does not isolate decay from a non-decaying trail arm.",
             "",
-            "*USD uses conservative long-context rates without cache discounts; "
+            "*USD uses configured upper token rates without cache discounts; "
+            "provider-reported costs are recorded separately and can increase the charge. "
             "unknown request outcomes retain their full spending reservation. "
             "This is not an account billing statement.",
             "Budget cutoffs count agents whose SDK logs report a pilot spending denial. "

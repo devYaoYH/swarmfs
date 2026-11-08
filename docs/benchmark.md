@@ -17,8 +17,10 @@ Revisions and the task-image digest are recorded in [`pilot.toml`](../pilot.toml
 Docker must be running with the Compose plugin available. The pinned image uses
 `linux/amd64`; an ARM host needs amd64 emulation enabled.
 
-For paid runs, add `OPENAI_API_KEY` to the ignored root `.env` file, using
+For paid runs, add the selected key to the ignored root `.env`, using
 [`.env.example`](../.env.example) as a template. Keep an existing `.env` intact.
+The default profile uses `OPENAI_API_KEY`; the OpenRouter profile uses
+`OPENROUTER_API_KEY`. See [model configuration](models.md).
 
 ```sh
 uv run swarm-trails prepare
@@ -29,10 +31,13 @@ uv run swarm-trails report
 
 Completed attempts are resumed by `experiment_id`; change that value for a fresh
 experiment. The shared spending ledger remains cumulative across experiment IDs.
-Keep settings fixed within an experiment ID. `prepare` writes generated task files,
+The runner freezes configuration and the LiteLLM version, refusing changed settings
+under an existing ID. `prepare` writes generated task files,
 `verify` writes `artifacts/validation.json`, and `pilot` writes its per-attempt
-records, logs and ledgers under `artifacts/pilot/`. `report` produces `summary.json`
-and `report.md` there. Raw local artifacts are not included in Git.
+records, logs and trail database under `artifacts/pilot/<experiment_id>/`.
+`report` produces `summary.json` and `report.md` there. The shared cost ledger is
+`artifacts/pilot/budget.db`. Original pilot artifacts predate this per-experiment
+layout and remain at `artifacts/pilot/`. Raw local artifacts are not included in Git.
 
 Published pilot: [results](results/pilot-2026-11-08.md) and
 [machine-readable summary with pinned inputs](results/pilot-2026-11-08.json).
@@ -55,18 +60,22 @@ context; only our matched control is used to calculate the treatment delta.
 
 ## Model and spending
 
-Put `OPENAI_API_KEY` in the ignored `.env`. The host-only gateway sends requests to
-OpenAI using exactly `gpt-6-luna`; agents receive disposable gateway tokens, not the key.
-Both arms use `reasoning_effort=none`: the endpoint rejected the SDK's combination
-of Chat Completions function tools and `reasoning_effort=low`. The initial rejected
-requests are preserved as calibration attempts and remain in the budget ledger.
+The host-only gateway calls LiteLLM's Python SDK for the model selected in `[llm]`.
+LiteLLM handles provider API translation; OpenHands continues to supply the agent
+tools and collaboration loop. Provider keys stay on the host. Both supplied profiles
+use `reasoning_effort=none`. The original Luna pilot's rejected setup requests remain
+in the cumulative ledger.
 Every request reserves a conservative amount in a shared SQLite ledger before it is
-forwarded. Limits are **$4 total** and **$0.20 per agent**. Unknown request outcomes
-keep their reservation. No upstream retries or hosted tools are enabled.
+forwarded. Limits are **$4 total**, **$0.20 per Luna agent** and **$0.05 per OpenRouter
+agent**. Unknown request outcomes keep their reservation. SDK/provider retries,
+fallbacks and hosted tools are disabled.
 
-Rates are conservatively $0.20/M input and $0.75/M output, with no cache discount,
-using [OpenAI's long-context pricing](https://developers.openai.com/api/docs/pricing).
-Reported spending is an upper estimate, not the provider's billing statement.
+Each profile freezes token price ceilings; each reservation records its model and
+rates. The Luna profile retains conservative $0.20/M input and $0.75/M output rates,
+with no cache discount. OpenRouter also receives a provider pin and matching price
+ceilings. Provider-reported usage costs are recorded separately where available;
+they can raise the ledger charge above its token estimate, never lower it.
+The ledger is an upper estimate, not the provider's billing statement.
 The cap applies to this gateway's traffic, not concurrent use of the key elsewhere.
 
 The gateway inserts transient trail blocks at the API request boundary, at most once

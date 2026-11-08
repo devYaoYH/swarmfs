@@ -1,5 +1,4 @@
-model = "gpt-6-luna"
-experiment_id = "sdk-chat-none-v2"
+experiment_id = "litellm-luna-v1"
 repetitions = 1
 max_iterations = 40
 agent_timeout_seconds = 900
@@ -10,6 +9,13 @@ platform = "linux/amd64"
 image = "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9"
 harbor_revision = "9c7a39b991d7e2205019f6be0598cbd22d84bfc3"
 cooperbench_revision = "63b9d44d9f39a02fccf5bf0052db48a917a011fd"
+
+[llm]
+model = "openai/gpt-6-luna"
+api_key_env = "OPENAI_API_KEY"
+reasoning_effort = "none"
+input_usd_per_million = 0.20
+output_usd_per_million = 0.75
 
 # Same task family and image: a low-cost smoke pilot, not a held-out study.
 [[pairs]]

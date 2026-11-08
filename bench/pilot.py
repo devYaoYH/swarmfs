@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import tomllib
+from importlib.metadata import version
 from pathlib import Path
 
 import yaml
@@ -16,6 +17,7 @@ from dotenv import dotenv_values
 
 from bench.budget import Budget
 from bench.gateway import Gateway, new_token
+from bench.llm import MODEL_ALIAS, ModelClient, ModelConfig
 from swarmfs.trails import TrailStore
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,8 +25,43 @@ UPSTREAM = ROOT / ".cache/upstream"
 ARTIFACTS = ROOT / "artifacts"
 
 
-def config():
-    return tomllib.loads((ROOT / "pilot.toml").read_text())
+def config(path=None):
+    return tomllib.loads(Path(path or ROOT / "pilot.toml").read_text())
+
+
+def model_client(cfg):
+    settings = ModelConfig(**cfg["llm"])
+    key = dotenv_values(ROOT / ".env").get(settings.api_key_env) or os.environ.get(
+        settings.api_key_env
+    )
+    if not key:
+        raise RuntimeError(f"{settings.api_key_env} is missing")
+    return ModelClient(settings, key)
+
+
+def experiment_output(cfg):
+    name = cfg["experiment_id"]
+    if (
+        not name
+        or name in {".", ".."}
+        or any(
+            c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
+            for c in name
+        )
+    ):
+        raise ValueError("experiment_id must be a simple directory name")
+    return ARTIFACTS / "pilot" / name
+
+
+def freeze_config(cfg):
+    output = experiment_output(cfg)
+    output.mkdir(parents=True, exist_ok=True)
+    manifest = output / "experiment.json"
+    frozen = {"config": cfg, "litellm_version": version("litellm")}
+    if manifest.exists() and json.loads(manifest.read_text()) != frozen:
+        raise ValueError("experiment settings changed; use a new experiment_id")
+    manifest.write_text(json.dumps(frozen, indent=2))
+    return output
 
 
 def command(args, *, cwd=None, log=None, timeout=1200):
@@ -45,8 +82,8 @@ def adapter_module():
     return module
 
 
-def prepare():
-    cfg = config()
+def prepare(cfg=None):
+    cfg = cfg or config()
     for repository, key in (("harbor", "harbor_revision"), ("CooperBench", "cooperbench_revision")):
         actual = command(["git", "-C", str(UPSTREAM / repository), "rev-parse", "HEAD"]).strip()
         if actual != cfg[key]:
@@ -145,7 +182,7 @@ def compose_file(task: Path, output: Path, *, actors: dict, port: int, cfg: dict
             "environment": {
                 "AGENT_ID": actor,
                 "AGENT_SERVER_PORT": "8000",
-                "SIDECAR_MODEL": "openai/" + cfg["model"],
+                "SIDECAR_MODEL": "openai/" + MODEL_ALIAS,
                 "LLM_API_KEY": token,
                 "LLM_BASE_URL": f"http://host.docker.internal:{port}/v1",
                 "TRAIL_GATEWAY": f"http://host.docker.internal:{port}",
@@ -177,10 +214,10 @@ def compose_file(task: Path, output: Path, *, actors: dict, port: int, cfg: dict
     return path
 
 
-def verify():
+def verify(cfg=None):
     """No models: both combined reference and untouched-base negative control."""
-    cfg = config()
-    tasks = prepare()
+    cfg = cfg or config()
+    tasks = prepare(cfg)
     records = []
     for task in tasks:
         for mode in ("oracle", "untouched"):
@@ -247,26 +284,28 @@ Path('/logs/verifier/reward.json').write_text(json.dumps({
     return records
 
 
-def run_pilot():
-    cfg = config()
+def run_pilot(cfg=None):
+    cfg = cfg or config()
     validation = json.loads((ARTIFACTS / "validation.json").read_text())
     if not validation or any(
         r.get("error") or r.get("reward") != (r["mode"] == "oracle") for r in validation
     ):
         raise RuntimeError("run offline verifier validation first")
-    key = dotenv_values(ROOT / ".env").get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
-    if not key:
-        raise RuntimeError("OPENAI_API_KEY is missing")
-    output = ARTIFACTS / "pilot"
-    output.mkdir(parents=True, exist_ok=True)
+    client = model_client(cfg)
+    output = freeze_config(cfg)
     budget = Budget(
-        str(output / "budget.db"), total=cfg["budget_usd"], per_agent=cfg["per_agent_budget_usd"]
+        str(ARTIFACTS / "pilot/budget.db"),
+        model=client.config.model,
+        input_usd_per_million=client.config.input_usd_per_million,
+        output_usd_per_million=client.config.output_usd_per_million,
+        total=cfg["budget_usd"],
+        per_agent=cfg["per_agent_budget_usd"],
     )
     gateway = Gateway(
         ("0.0.0.0", 0),
         trails=TrailStore(str(output / "trails.db")),
         budget=budget,
-        key=key,
+        llm=client,
         tokens={},
         half_life=cfg["half_life_seconds"],
     )
@@ -302,9 +341,11 @@ def run_pilot():
                         "arm": arm,
                         "task": task.name,
                         "repetition": repetition,
-                        "model": cfg["model"],
+                        "model": client.config.model,
+                        "llm": client.config.manifest(),
+                        "litellm_version": version("litellm"),
                         "harness": "openhands-sdk",
-                        "reasoning_effort": "none",
+                        "reasoning_effort": client.config.reasoning_effort,
                         "harbor_revision": cfg["harbor_revision"],
                         "cooperbench_revision": cfg["cooperbench_revision"],
                     }
@@ -372,5 +413,4 @@ def run_pilot():
         (output / "budget.json").write_text(json.dumps(budget.snapshot(), indent=2))
         gateway.shutdown()
         gateway.server_close()
-        gateway.upstream.close()
     return results

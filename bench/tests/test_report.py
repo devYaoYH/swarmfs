@@ -37,3 +37,15 @@ def test_unmatched_arms_do_not_produce_comparative_claim():
     )
     assert result["success_delta_percentage_points"] is None
     assert result["total_token_savings_percent"] is None
+
+
+def test_different_models_are_not_treated_as_a_matched_comparison():
+    result = summarize(
+        [
+            {"arm": arm, "episode": arm, "task": "1", "repetition": 0, "reward": 0, "model": model}
+            for arm, model in (("baseline", "openai/luna"), ("trails", "openrouter/deepseek/flash"))
+        ],
+        {"agents": []},
+    )
+    assert result["matched"] is False
+    assert result["success_delta_percentage_points"] is None

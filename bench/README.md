@@ -5,6 +5,7 @@ gateway, spending controls and reporting live here, alongside their offline test
 The core algorithm remains in [`src/swarmfs/`](../src/swarmfs/).
 
 - [Setup and run the benchmark](../docs/benchmark.md)
+- [Configure model providers through LiteLLM SDK](../docs/models.md)
 - [Preliminary pilot results](../docs/results/pilot-2026-11-08.md)
 - [Local store timings](micro.py): `uv run python -m bench.micro`
 

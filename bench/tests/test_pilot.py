@@ -1,5 +1,7 @@
+import pytest
 import yaml
 
+from bench.llm import MODEL_ALIAS
 from bench.pilot import compose_file
 
 
@@ -23,6 +25,19 @@ def test_agents_get_only_disposable_tokens_and_no_verifiers(tmp_path):
     for actor in ("agent1", "agent2"):
         config = services[actor]
         assert "OPENAI_API_KEY" not in config["environment"]
+        assert "OPENROUTER_API_KEY" not in config["environment"]
+        assert config["environment"]["SIDECAR_MODEL"] == "openai/" + MODEL_ALIAS
         assert config["environment"]["LLM_API_KEY"].startswith("disposable-")
         assert all("/tests" not in mount and ".env" not in mount for mount in config["volumes"])
     assert "redis" in services
+
+
+def test_experiment_manifest_refuses_changed_model(tmp_path, monkeypatch):
+    from bench import pilot
+
+    monkeypatch.setattr(pilot, "ARTIFACTS", tmp_path)
+    cfg = {"experiment_id": "test", "llm": {"model": "openai/first"}}
+    pilot.freeze_config(cfg)
+    pilot.freeze_config(cfg)
+    with pytest.raises(ValueError, match="new experiment_id"):
+        pilot.freeze_config({**cfg, "llm": {"model": "openrouter/second"}})

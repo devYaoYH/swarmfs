@@ -3,6 +3,7 @@
 - [Install and use SwarmFS](../README.md): landing page and core example.
 - [Implemented design](design.md): event capture, decay, ranking and boundaries.
 - [Run CooperBench locally](benchmark.md): setup, controls, model and spending.
+- [Model and provider configuration](models.md): LiteLLM SDK, OpenRouter and smoke checks.
 - [Preliminary pilot results](results/pilot-2026-11-08.md): metrics and limitations.
 - [Results and pinned manifest as JSON](results/pilot-2026-11-08.json).
 - [Earlier experiment proposal](activity-trail-proposal.md): broader hypotheses
