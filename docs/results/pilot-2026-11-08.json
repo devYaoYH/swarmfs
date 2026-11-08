@@ -1,0 +1,166 @@
+{
+  "arms": {
+    "baseline": {
+      "attempts": 2,
+      "successes": 0,
+      "success_percent": 0.0,
+      "input_tokens": 2045324,
+      "output_tokens": 9970,
+      "conservative_usd": 0.41654230000000003,
+      "unsettled_requests": 0,
+      "errors": 0,
+      "budget_cutoff_agents": 1,
+      "iteration_cutoff_agents": 1
+    },
+    "trails": {
+      "attempts": 2,
+      "successes": 0,
+      "success_percent": 0.0,
+      "input_tokens": 1609542,
+      "output_tokens": 9423,
+      "conservative_usd": 0.32897565,
+      "unsettled_requests": 0,
+      "errors": 0,
+      "budget_cutoff_agents": 0,
+      "iteration_cutoff_agents": 1
+    }
+  },
+  "matched": true,
+  "success_delta_percentage_points": 0.0,
+  "total_token_savings_percent": 21.22951752887908,
+  "note": "Small exploratory pilot; paper baselines are context, not matched controls.",
+  "total_conservative_usd_including_calibration": 0.7901755500000001,
+  "captured_events": 82,
+  "delivered_blocks": 8,
+  "displayed_age_seconds": {
+    "median": 4.0,
+    "max": 34
+  },
+  "manifest": {
+    "model": "gpt-6-luna",
+    "experiment_id": "sdk-chat-none-v2",
+    "repetitions": 1,
+    "max_iterations": 40,
+    "agent_timeout_seconds": 900,
+    "budget_usd": 4.0,
+    "per_agent_budget_usd": 0.2,
+    "half_life_seconds": 300,
+    "platform": "linux/amd64",
+    "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9",
+    "harbor_revision": "9c7a39b991d7e2205019f6be0598cbd22d84bfc3",
+    "cooperbench_revision": "63b9d44d9f39a02fccf5bf0052db48a917a011fd",
+    "pairs": [
+      {
+        "repository": "pallets_jinja_task",
+        "task_id": 1621,
+        "features": [
+          1,
+          6
+        ]
+      },
+      {
+        "repository": "pallets_jinja_task",
+        "task_id": 1621,
+        "features": [
+          2,
+          9
+        ]
+      }
+    ],
+    "reasoning_effort": "none"
+  },
+  "local_overhead": {
+    "events": 300,
+    "paths": 20,
+    "scope": "Sequential local SQLite calls; excludes HTTP, SDK and model latency.",
+    "milliseconds": {
+      "deposit": {
+        "p50": 0.644,
+        "p95": 1.125
+      },
+      "lookup": {
+        "p50": 0.563,
+        "p95": 0.843
+      }
+    },
+    "database_bytes_including_wal": 49152
+  },
+  "attempts": [
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "arm": "baseline",
+      "reward": 0,
+      "feature1_passed": true,
+      "feature2_passed": false,
+      "merge_ok": true,
+      "strategy": "naive",
+      "seconds": 535.7565271658823
+    },
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "arm": "trails",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": true,
+      "merge_ok": true,
+      "strategy": "naive",
+      "seconds": 468.677844833117
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "arm": "baseline",
+      "reward": 0,
+      "feature1_passed": true,
+      "feature2_passed": false,
+      "merge_ok": true,
+      "strategy": "naive",
+      "seconds": 346.48063475009985
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "arm": "trails",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": true,
+      "merge_ok": true,
+      "strategy": "union",
+      "seconds": 164.06897862511687
+    }
+  ],
+  "verifier_controls": [
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "mode": "oracle",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "merge_ok": true,
+      "strategy": "oracle"
+    },
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "mode": "untouched",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "strategy": "untouched-base"
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "mode": "oracle",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "merge_ok": true,
+      "strategy": "oracle"
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "mode": "untouched",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "strategy": "untouched-base"
+    }
+  ]
+}
