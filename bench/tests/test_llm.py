@@ -147,3 +147,8 @@ def test_explicit_rates_and_openrouter_provider_required(luna_config):
         replace(luna_config, input_usd_per_million=float("nan"))
     with pytest.raises(ValueError):
         replace(luna_config, model="openrouter/deepseek/test")
+
+
+def test_sdk_may_omit_response_cap_for_budget_native_output_mode(luna_config):
+    request = ModelClient(luna_config, "fake").prepare({"model": MODEL_ALIAS, "messages": []})
+    assert "max_tokens" not in request

@@ -1,9 +1,13 @@
-experiment_id = "intent-deepseek-flash-v1"
+experiment_id = "intent-deepseek-expanded-v1"
 repetitions = 1
-max_iterations = 40
+max_iterations = 100
 agent_timeout_seconds = 900
 budget_usd = 4.0
-per_agent_budget_usd = 0.05
+per_agent_budget_usd = 0.50
+# No fixed per-response cap; reserve against the selected endpoint's native limit,
+# lowering it only as needed to respect the remaining dollar allowance.
+provider_max_output_tokens = 943718
+max_input_tokens = 1048576
 half_life_seconds = 300
 platform = "linux/amd64"
 image = "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9"
@@ -28,3 +32,20 @@ features = [1, 6]
 repository = "pallets_jinja_task"
 task_id = 1621
 features = [2, 9]
+
+[[pairs]]
+repository = "pallets_jinja_task"
+task_id = 1621
+features = [4, 7]
+
+[[pairs]]
+repository = "pallets_jinja_task"
+task_id = 1465
+base_commit = "20eb7f5e33120f1717b78bdf85540ab75631187a"
+features = [1, 3]
+
+[[pairs]]
+repository = "pallets_jinja_task"
+task_id = 1559
+base_commit = "896a62135bcc151f2997e028c5125bec2cb2431f"
+features = [1, 3]

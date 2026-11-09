@@ -72,14 +72,15 @@ class ModelClient:
             for k in ("max_tokens", "max_completion_tokens", "max_output_tokens")
             if k in payload
         ]
-        if not limits or any(limit != limits[0] for limit in limits):
+        if any(limit != limits[0] for limit in limits):
             raise ValueError("one consistent output limit required")
         request = {k: payload[k] for k in CHAT_FIELDS if k in payload}
         request.update(
             model=self.config.model,
-            max_tokens=limits[0],
             stream=False,
         )
+        if limits:
+            request["max_tokens"] = limits[0]
         if self.config.reasoning_effort is not None:
             request["reasoning_effort"] = self.config.reasoning_effort
         if self.config.openrouter_provider:

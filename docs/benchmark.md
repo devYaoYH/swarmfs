@@ -56,7 +56,7 @@ trail namespace and two separate workspaces. This is one task family, not a held
 evaluation. Both instructions already name a target file, limiting navigation claims.
 Both arms now use an intent-aware file tool with a required short note. The published
 Luna results used the earlier observation-only protocol. Current profiles use fresh
-`intent-…-v1` experiment IDs; no paid benchmark has run for this new version.
+`intent-…-v1` experiment IDs; the expanded DeepSeek run uses its own manifest and result directory.
 
 Primary result: joint completion success and the difference in **percentage points**.
 Secondary: input/output tokens and token savings. The paper's published baseline is
@@ -70,7 +70,7 @@ tools and collaboration loop. Provider keys stay on the host. Both supplied prof
 use `reasoning_effort=none`. The original Luna pilot's rejected setup requests remain
 in the cumulative ledger.
 Every request reserves a conservative amount in a shared SQLite ledger before it is
-forwarded. Limits are **$4 total**, **$0.20 per Luna agent** and **$0.05 per OpenRouter
+forwarded. Limits are **$4 total**, **$0.20 per Luna agent** and **$0.50 per OpenRouter
 agent**. Unknown request outcomes keep their reservation. SDK/provider retries,
 fallbacks and hosted tools are disabled.
 
@@ -115,3 +115,36 @@ passed. Checks write temporary files inside the disposable container; source mou
 are read-only. The tool posts a declaration before touching the file, records the
 linked outcome, and leaves native editor output intact. The check also verifies
 self-exclusion and that declaration/outcome pairs count as one action.
+
+## Expanded DeepSeek task set
+
+Run the same four commands with `--config bench/configs/openrouter.toml`.
+The profile selects exactly these tasks; unrelated generated tasks are ignored.
+
+| Task | Features | Work |
+| --- | --- | --- |
+| Jinja 1621 | 1 + 6 | Fallback search paths + path transformation (original pair) |
+| Jinja 1621 | 2 + 9 | Path normalization + cache invalidation monitoring (original pair) |
+| Jinja 1621 | 4 + 7 | Search-path priorities + environment/home expansion |
+| Jinja 1465 | 1 + 3 | Case-sensitive groupby + reverse group order |
+| Jinja 1559 | 1 + 3 | Translation context + translation domains |
+
+Each task pins its original repository commit and uses its own public runner and
+test patches. The cached image supplies the SDK, dependencies and repository
+history; both agents and the verifier check out that task's base before starting.
+Private test runners are mounted only in the verifier. Reference and untouched
+controls cover every selected pair; hashes bind validation to the exact inputs.
+Arm order alternates across pairs. There is one repetition, so results remain
+preliminary and features from one family are correlated.
+
+The [CooperBench paper](https://arxiv.org/html/2601.13295v2) specifies 100 actions;
+the pinned OpenHands adapter implements its step setting as 100 SDK iterations.
+An SDK iteration can emit multiple tool actions, so we record actual actions in
+traces and do not equate the two counters. We keep asynchronous messaging,
+isolated workspaces, task inputs and the pinned Harbor verifier. The paper also
+uses a learned conflict resolver after ordinary/union merge attempts; this local
+Harbor verifier uses ordinary/union merging without that extra model. These are
+local adaptation results, not an exact reproduction of the paper's baseline.
+The retained 900-second timeout and $0.50 allowance per agent are our experiment's
+additional limits. Model response length has no fixed pilot cap; remaining dollar
+allowance and the provider's native capacity determine the request bound.

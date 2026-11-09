@@ -1,8 +1,10 @@
 """Run the pinned Harbor CooperBench sidecars locally with Docker Compose."""
 
+import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -24,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = ROOT / ".cache/upstream"
 ARTIFACTS = ROOT / "artifacts"
 TRAIL_PROTOCOL = "intent-v1"
+DEFAULT_BASE = "a2920752fd111c2d52c88eb57487667b3cf0ea7b"
 
 
 def config(path=None):
@@ -87,6 +90,47 @@ def adapter_module():
     return module
 
 
+def task_paths(cfg):
+    return [
+        ARTIFACTS / "tasks" / f"cb-jinja-t{p['task_id']}-f{p['features'][0]}-{p['features'][1]}"
+        for p in cfg["pairs"]
+    ]
+
+
+def task_runtime(task, cfg):
+    path = task / "benchmark.json"
+    return (
+        json.loads(path.read_text())
+        if path.exists()
+        else {"base_commit": DEFAULT_BASE, "image": cfg["image"]}
+    )
+
+
+def workspace_entry(task, cfg, command):
+    base = task_runtime(task, cfg)["base_commit"]
+    if not re.fullmatch("[0-9a-f]{40}", base):
+        raise ValueError("invalid pinned base commit")
+    return [
+        "bash",
+        "-c",
+        'git -C /workspace/repo checkout --detach "$1" && shift && exec "$@"',
+        "swarmfs",
+        base,
+        *command,
+    ]
+
+
+def task_signature(task):
+    digest = hashlib.sha256()
+    for path in [
+        task / "benchmark.json",
+        *sorted((task / "tests").iterdir()),
+        task / "solution/combined.patch",
+    ]:
+        digest.update(path.name.encode() + b"\0" + path.read_bytes())
+    return digest.hexdigest()
+
+
 def prepare(cfg=None):
     cfg = cfg or config()
     for repository, key in (("harbor", "harbor_revision"), ("CooperBench", "cooperbench_revision")):
@@ -98,6 +142,7 @@ def prepare(cfg=None):
     generated = []
     for pair in cfg["pairs"]:
         source = UPSTREAM / "CooperBench/dataset" / pair["repository"] / f"task{pair['task_id']}"
+        base_commit = pair.get("base_commit", DEFAULT_BASE)
         features = []
         for feature_id in pair["features"]:
             folder = source / f"feature{feature_id}"
@@ -105,7 +150,7 @@ def prepare(cfg=None):
                 module.CooperBenchFeature(
                     instance_id=f"jinja-{pair['task_id']}-{feature_id}",
                     repo="pallets/jinja",
-                    base_commit="a2920752fd111c2d52c88eb57487667b3cf0ea7b",
+                    base_commit=base_commit,
                     problem_statement=(folder / "feature.md").read_text(),
                     patch="",
                     test_patch=(folder / "tests.patch").read_text(),
@@ -146,8 +191,18 @@ def prepare(cfg=None):
             )
             text = text.replace(
                 "    llm = LLM(**llm_kwargs)",
-                "    llm_kwargs.update(stream=False, max_output_tokens=4096, num_retries=0, "
-                "max_input_tokens=100000, disable_vision=True, reasoning_effort='none')\n"
+                "    llm_kwargs.update("
+                + repr(
+                    {
+                        "stream": False,
+                        "max_output_tokens": cfg.get("max_output_tokens"),
+                        "num_retries": 0,
+                        "max_input_tokens": cfg.get("max_input_tokens", 100000),
+                        "disable_vision": True,
+                        "reasoning_effort": cfg["llm"].get("reasoning_effort"),
+                    }
+                )
+                + ")\n"
                 "    llm = LLM(**llm_kwargs)",
             )
             text = text.replace(
@@ -164,7 +219,7 @@ def prepare(cfg=None):
             )
             if (
                 "activity_hook.on_event" not in text
-                or "max_output_tokens=4096" not in text
+                or "llm_kwargs.update(" not in text
                 or "Tool(name=TrailFileEditorTool.name)" not in text
             ):
                 raise RuntimeError("upstream SDK template changed")
@@ -180,19 +235,34 @@ def prepare(cfg=None):
                 )
             )
         (path / "trail-protocol.txt").write_text(TRAIL_PROTOCOL)
+        shutil.copy(source / "runner.sh", path / "tests/runner.sh")
+        (path / "benchmark.json").write_text(
+            json.dumps(
+                {
+                    "repository": pair["repository"],
+                    "task_id": pair["task_id"],
+                    "features": pair["features"],
+                    "base_commit": base_commit,
+                    "image": pair.get("image", cfg["image"]),
+                },
+                indent=2,
+            )
+        )
         generated.append(path)
     return generated
 
 
 def compose_file(task: Path, output: Path, *, actors: dict, port: int, cfg: dict):
     output.mkdir(parents=True, exist_ok=True)
+    runtime = task_runtime(task, cfg)
     services = {
         "main": {
-            "image": cfg["image"],
+            "image": runtime["image"],
             "platform": cfg["platform"],
-            "entrypoint": ["sleep", "infinity"],
+            "entrypoint": workspace_entry(task, cfg, ["sleep", "infinity"]),
             "volumes": [
                 f"{task / 'tests'}:/tests:ro",
+                f"{task / 'tests/runner.sh'}:/usr/local/bin/runner.sh:ro",
                 f"{output / 'verifier'}:/logs/verifier",
                 "agent1_out:/shared/agent1:ro",
                 "agent2_out:/shared/agent2:ro",
@@ -202,9 +272,9 @@ def compose_file(task: Path, output: Path, *, actors: dict, port: int, cfg: dict
     }
     for actor, token in actors.items():
         services[actor] = {
-            "image": cfg["image"],
+            "image": runtime["image"],
             "platform": cfg["platform"],
-            "entrypoint": ["bash", "/entrypoint.sh"],
+            "entrypoint": workspace_entry(task, cfg, ["bash", "/entrypoint.sh"]),
             "environment": {
                 "AGENT_ID": actor,
                 "AGENT_SERVER_PORT": "8000",
@@ -246,6 +316,7 @@ def verify(cfg=None):
     tasks = prepare(cfg)
     records = []
     for task in tasks:
+        runtime = task_runtime(task, cfg)
         for mode in ("oracle", "untouched"):
             output = ARTIFACTS / "validation" / task.name / mode
             output.mkdir(parents=True, exist_ok=True)
@@ -274,6 +345,7 @@ Path('/logs/verifier/reward.json').write_text(json.dumps({
                 entry = ["python3", "-c", script]
             # Use the unmodified upstream verifier and exact benchmark runner.
             try:
+                entry = workspace_entry(task, cfg, entry)
                 command(
                     [
                         "docker",
@@ -286,16 +358,20 @@ Path('/logs/verifier/reward.json').write_text(json.dumps({
                         "-v",
                         f"{task / 'tests'}:/tests:ro",
                         "-v",
+                        f"{task / 'tests/runner.sh'}:/usr/local/bin/runner.sh:ro",
+                        "-v",
                         f"{patches}:/patches",
                         "-v",
                         f"{output}:/logs/verifier",
-                        cfg["image"],
+                        runtime["image"],
                         *entry[1:],
                     ],
                     log=output / "execution.log",
                 )
                 reward = json.loads((output / "reward.json").read_text())
-                records.append({"task": task.name, "mode": mode, **reward})
+                records.append(
+                    {"task": task.name, "mode": mode, "signature": task_signature(task), **reward}
+                )
             except (RuntimeError, OSError) as exc:
                 records.append({"task": task.name, "mode": mode, "error": str(exc)})
             print(json.dumps(records[-1]), flush=True)
@@ -317,13 +393,20 @@ def run_pilot(cfg=None):
         r.get("error") or r.get("reward") != (r["mode"] == "oracle") for r in validation
     ):
         raise RuntimeError("run offline verifier validation first")
-    tasks = sorted((ARTIFACTS / "tasks").iterdir())
+    tasks = task_paths(cfg)
     if not tasks or any(
         not (task / "trail-protocol.txt").exists()
         or (task / "trail-protocol.txt").read_text() != TRAIL_PROTOCOL
         for task in tasks
     ):
         raise RuntimeError("run prepare first: task scripts must use the current trail protocol")
+    expected = {
+        (task.name, mode, task_signature(task))
+        for task in tasks
+        for mode in ("oracle", "untouched")
+    }
+    if {(r["task"], r["mode"], r.get("signature")) for r in validation} != expected:
+        raise RuntimeError("run verify first: validation must cover these exact task inputs")
     client = model_client(cfg)
     output = freeze_config(cfg)
     budget = Budget(
@@ -333,6 +416,7 @@ def run_pilot(cfg=None):
         output_usd_per_million=client.config.output_usd_per_million,
         total=cfg["budget_usd"],
         per_agent=cfg["per_agent_budget_usd"],
+        provider_max_output_tokens=cfg.get("provider_max_output_tokens"),
     )
     gateway = Gateway(
         ("0.0.0.0", 0),
@@ -347,9 +431,13 @@ def run_pilot(cfg=None):
     results = []
     try:
         for repetition in range(cfg["repetitions"]):
-            for task in tasks:
+            for task_index, task in enumerate(tasks):
                 # Counterbalance arm order, including across repetitions.
-                arms = ["baseline", "trails"] if repetition % 2 == 0 else ["trails", "baseline"]
+                arms = (
+                    ["baseline", "trails"]
+                    if (repetition + task_index) % 2 == 0
+                    else ["trails", "baseline"]
+                )
                 for arm in arms:
                     episode = f"{cfg['experiment_id']}-{task.name}-r{repetition}-{arm}"
                     run_dir = output / episode
@@ -377,6 +465,13 @@ def run_pilot(cfg=None):
                         "llm": client.config.manifest(),
                         "litellm_version": version("litellm"),
                         "trail_protocol": TRAIL_PROTOCOL,
+                        "runtime": task_runtime(task, cfg),
+                        "max_iterations": cfg["max_iterations"],
+                        "agent_timeout_seconds": cfg["agent_timeout_seconds"],
+                        "per_agent_budget_usd": cfg["per_agent_budget_usd"],
+                        "provider_max_output_tokens": cfg.get("provider_max_output_tokens"),
+                        "max_output_tokens": cfg.get("max_output_tokens"),
+                        "max_input_tokens": cfg.get("max_input_tokens", 100000),
                         "harness": "openhands-sdk",
                         "reasoning_effort": client.config.reasoning_effort,
                         "harbor_revision": cfg["harbor_revision"],

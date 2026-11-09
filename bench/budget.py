@@ -21,11 +21,17 @@ class Budget:
         output_usd_per_million: float,
         total: float = 4.0,
         per_agent: float = 0.30,
+        provider_max_output_tokens: int | None = None,
     ):
         if not 0 < total <= 4 or not 0 < per_agent <= total:
             raise ValueError("pilot limits must be positive and at most $4")
         self.path, self.total, self.per_agent = path, total, per_agent
         self.model = model
+        if provider_max_output_tokens is not None and (
+            type(provider_max_output_tokens) is not int or provider_max_output_tokens < 1
+        ):
+            raise ValueError("positive provider output capacity required")
+        self.provider_max_output_tokens = provider_max_output_tokens
         rates = (input_usd_per_million, output_usd_per_million)
         if any(not math.isfinite(rate) or rate <= 0 for rate in rates):
             raise ValueError("explicit positive finite spending rates required")
@@ -59,7 +65,9 @@ class Budget:
         output = payload.get(
             "max_completion_tokens", payload.get("max_output_tokens", payload.get("max_tokens", 0))
         )
-        if not isinstance(output, int) or not 0 < output <= 8192:
+        if self.provider_max_output_tokens is None and (
+            type(output) is not int or not 0 < output <= 8192
+        ):
             raise ValueError("explicit output limit (1–8192) required")
         # UTF-8 request bytes conservatively bound ordinary text/tool tokens.
         # Disallow modalities/state that would invalidate this reservation bound.
@@ -81,7 +89,7 @@ class Budget:
         tools = payload.get("tools", [])
         if any(t.get("type") != "function" for t in tools):
             raise ValueError("hosted tools are outside the pilot budget")
-        reserved = (len(encoded) + 4096) * self.input_rate + output * self.output_rate
+        input_reservation = (len(encoded) + 4096) * self.input_rate
         identity = uuid.uuid4().hex
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -90,6 +98,21 @@ class Budget:
                 "SELECT COALESCE(SUM(charged),0) FROM requests WHERE actor=?",
                 (actor,),
             ).fetchone()[0]
+            if self.provider_max_output_tokens is not None:
+                # No fixed response-length ceiling: spend up to the endpoint's native
+                # capacity, reduced only by the remaining dollar allowance. Reserve
+                # and choose the output bound atomically across concurrent actors.
+                remaining = min(self.total - total, self.per_agent - spent)
+                output = min(
+                    self.provider_max_output_tokens,
+                    math.floor((remaining - input_reservation) / self.output_rate),
+                )
+                if output < 1:
+                    raise BudgetExceeded("pilot or per-agent spending allowance exhausted")
+                payload.pop("max_completion_tokens", None)
+                payload.pop("max_output_tokens", None)
+                payload["max_tokens"] = output
+            reserved = input_reservation + output * self.output_rate
             if total + reserved > self.total or spent + reserved > self.per_agent:
                 raise BudgetExceeded("pilot or per-agent spending allowance exhausted")
             db.execute(

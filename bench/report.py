@@ -41,6 +41,17 @@ def summarize(results: list[dict], budget: dict) -> dict:
             {
                 "llm": r.get("llm", {"model": r.get("model")}),
                 "trail_protocol": r.get("trail_protocol", "observed-v0"),
+                "limits": {
+                    k: r.get(k)
+                    for k in (
+                        "max_iterations",
+                        "agent_timeout_seconds",
+                        "per_agent_budget_usd",
+                        "provider_max_output_tokens",
+                        "max_output_tokens",
+                        "max_input_tokens",
+                    )
+                },
             },
             sort_keys=True,
         )
@@ -57,6 +68,8 @@ def summarize(results: list[dict], budget: dict) -> dict:
         "arms": arms,
         "matched": matched,
         "models": sorted({r.get("model", "legacy") for r in results}),
+        "feature_pairs": len({r["task"] for r in results}),
+        "task_families": len({r["task"].rsplit("-f", 1)[0] for r in results}),
         "success_delta_percentage_points": delta,
         "total_token_savings_percent": savings,
         "note": "Small exploratory pilot; paper baselines are context, not matched controls.",
@@ -143,7 +156,8 @@ def report(output: Path):
             "Completion rates include those attempts; token savings must be read alongside "
             "success and cutoffs, since stopping early also reduces tokens.",
             "",
-            "Two feature pairs from one Jinja task family are a smoke pilot, not a "
+            f"{summary['feature_pairs']} feature pairs from {summary['task_families']} "
+            "task families form a preliminary pilot, not a "
             "held-out evaluation. Timeouts, tiny sample size, shared family and partial "
             "structured-file capture limit interpretation. Baseline and treatment keep "
             "messaging, tools, model and verifier constant.",

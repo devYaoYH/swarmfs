@@ -10,7 +10,7 @@ the ignored root `.env`; the profile names the key's environment variable.
 | Profile | LiteLLM model | Key variable | Per-agent limit |
 | --- | --- | --- | --- |
 | `pilot.toml` | `openai/gpt-6-luna` | `OPENAI_API_KEY` | $0.20 |
-| `bench/configs/openrouter.toml` | `openrouter/deepseek/deepseek-v4.1-flash-1017` | `OPENROUTER_API_KEY` | $0.05 |
+| `bench/configs/openrouter.toml` | `openrouter/deepseek/deepseek-v4.1-flash-1017` | `OPENROUTER_API_KEY` | $0.50 |
 
 ## Use OpenRouter
 
@@ -36,7 +36,7 @@ uv run swarm-trails report --config bench/configs/openrouter.toml
 
 The OpenRouter profile pins the October 17 model snapshot and Relace's `fp4`
 endpoint. This is a quantized, low-cost route, distinct from DeepSeek's first-party
-endpoint. The observed listing on 2026-11-08 was $0.006/M input and $0.50/M output;
+endpoint. The checked listing on 2026-11-09 was $0.006/M input and $0.50/M output;
 those are also the request price ceilings. If that route is unavailable or exceeds
 the ceiling, the request fails rather than falling back to another endpoint.
 [Live model/provider catalog](https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash-1017/endpoints).
@@ -75,3 +75,20 @@ across profiles, including earlier OpenAI calls. Provider-reported costs, where
 available, are separate fields in the ledger snapshot and report JSON.
 
 [LiteLLM SDK provider documentation](https://docs.litellm.ai/docs/providers/openrouter).
+
+## Expanded DeepSeek pilot
+
+The current OpenRouter profile covers five pairs across three Jinja task families,
+with one capture-only and one visible-trail attempt per pair. It retains the
+900-second per-agent timeout, uses the CooperBench SDK's 100-iteration setting,
+and permits $0.50 per agent assigned to a feature. The cumulative $4 ledger is
+unchanged, including earlier runs and setup.
+
+There is no fixed 4,096-token response ceiling. The checked Relace FP4 endpoint
+advertises 943,718 completion tokens and a 1,048,576-token context window. Before
+forwarding a request, the gateway atomically chooses an output allowance bounded
+by that native capacity and the remaining dollars after reserving input cost.
+This may lower response capacity near the dollar limit; it prevents an uncapped
+response from spending beyond the allowance. Simultaneous and unknown-outcome
+requests keep their reservations. The small standalone SDK smoke retains its
+128-token output limit.

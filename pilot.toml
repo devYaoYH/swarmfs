@@ -1,6 +1,7 @@
 experiment_id = "intent-luna-v1"
 repetitions = 1
 max_iterations = 40
+max_output_tokens = 4096
 agent_timeout_seconds = 900
 budget_usd = 4.0
 per_agent_budget_usd = 0.20

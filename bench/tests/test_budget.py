@@ -91,3 +91,50 @@ def test_existing_ledger_migration_keeps_unknown_old_charges(tmp_path, make_budg
     budget.settle("old", {"usage": {"prompt_tokens": 0, "completion_tokens": 0}})
     assert budget.snapshot()["conservative_usd"] == 0.01
     assert budget.snapshot()["agents"][0]["unsettled_requests"] == 1
+
+
+def test_native_output_capacity_is_reduced_only_by_remaining_dollars(make_budget):
+    budget = make_budget(
+        total=4,
+        per_agent=0.5,
+        provider_max_output_tokens=943718,
+        input_usd_per_million=0.006,
+        output_usd_per_million=0.5,
+    )
+    body = request()
+    body.pop("max_completion_tokens")
+    identity = budget.reserve("a", body)
+    assert body["max_tokens"] == 943718  # No former 4096/8192 cap.
+    budget.settle(identity, {"usage": {"prompt_tokens": 10, "completion_tokens": 10, "cost": 0.49}})
+    followup = request()
+    followup.pop("max_completion_tokens")
+    budget.reserve("a", followup)
+    assert 1 <= followup["max_tokens"] < 20000
+    assert budget.snapshot()["conservative_usd"] <= 0.5
+
+
+def test_native_output_reservations_remain_atomic(make_budget):
+    budget = make_budget(
+        total=0.5,
+        per_agent=0.5,
+        provider_max_output_tokens=943718,
+        input_usd_per_million=0.006,
+        output_usd_per_million=0.5,
+    )
+
+    def reserve(_):
+        try:
+            return budget.reserve("a", request())
+        except BudgetExceeded:
+            return None
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        identities = list(pool.map(reserve, range(32)))
+    assert any(identities) and budget.snapshot()["conservative_usd"] <= 0.5
+
+
+def test_missing_output_limit_still_rejected_without_known_provider_capacity(make_budget):
+    body = request()
+    body.pop("max_completion_tokens")
+    with pytest.raises(ValueError):
+        make_budget().reserve("a", body)
