@@ -23,6 +23,7 @@ from swarmfs.trails import TrailStore
 ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = ROOT / ".cache/upstream"
 ARTIFACTS = ROOT / "artifacts"
+TRAIL_PROTOCOL = "intent-v1"
 
 
 def config(path=None):
@@ -57,7 +58,11 @@ def freeze_config(cfg):
     output = experiment_output(cfg)
     output.mkdir(parents=True, exist_ok=True)
     manifest = output / "experiment.json"
-    frozen = {"config": cfg, "litellm_version": version("litellm")}
+    frozen = {
+        "config": cfg,
+        "litellm_version": version("litellm"),
+        "trail_protocol": TRAIL_PROTOCOL,
+    }
     if manifest.exists() and json.loads(manifest.read_text()) != frozen:
         raise ValueError("experiment settings changed; use a new experiment_id")
     manifest.write_text(json.dumps(frozen, indent=2))
@@ -125,11 +130,17 @@ def prepare(cfg=None):
             ),
             overwrite=True,
         )
-        # Only the SDK callback and LLM limits change. The native tools, prompts,
-        # collaboration and Harbor verifier are retained.
+        # Both arms use the same intent-aware file tool, callbacks and LLM limits.
+        # Native collaboration and the Harbor verifier are retained.
         for actor in ("agent1", "agent2"):
             script = path / "environment" / actor / "run_agent.py"
             text = script.read_text()
+            text = text.replace(
+                "    register_default_tools(enable_browser=False)",
+                "    register_default_tools(enable_browser=False)\n"
+                "    from bench.intent_editor import TrailFileEditorTool",
+            )
+            text = text.replace('Tool(name="file_editor")', "Tool(name=TrailFileEditorTool.name)")
             text = text.replace(
                 "import os\n", 'import os\nos.makedirs("/logs/agent", exist_ok=True)\n', 1
             )
@@ -151,9 +162,24 @@ def prepare(cfg=None):
                 "            events_log.append(raw_event)\n"
                 "            activity_hook.on_event(raw_event)",
             )
-            if "activity_hook.on_event" not in text or "max_output_tokens=4096" not in text:
+            if (
+                "activity_hook.on_event" not in text
+                or "max_output_tokens=4096" not in text
+                or "Tool(name=TrailFileEditorTool.name)" not in text
+            ):
                 raise RuntimeError("upstream SDK template changed")
             script.write_text(text)
+            entrypoint = script.with_name("entrypoint.sh")
+            entry = entrypoint.read_text()
+            marker = "from openhands.agent_server.__main__ import main"
+            if marker not in entry:
+                raise RuntimeError("upstream server entrypoint changed")
+            entrypoint.write_text(
+                entry.replace(
+                    marker, "from bench.intent_editor import TrailFileEditorTool\n" + marker
+                )
+            )
+        (path / "trail-protocol.txt").write_text(TRAIL_PROTOCOL)
         generated.append(path)
     return generated
 
@@ -291,6 +317,13 @@ def run_pilot(cfg=None):
         r.get("error") or r.get("reward") != (r["mode"] == "oracle") for r in validation
     ):
         raise RuntimeError("run offline verifier validation first")
+    tasks = sorted((ARTIFACTS / "tasks").iterdir())
+    if not tasks or any(
+        not (task / "trail-protocol.txt").exists()
+        or (task / "trail-protocol.txt").read_text() != TRAIL_PROTOCOL
+        for task in tasks
+    ):
+        raise RuntimeError("run prepare first: task scripts must use the current trail protocol")
     client = model_client(cfg)
     output = freeze_config(cfg)
     budget = Budget(
@@ -311,7 +344,6 @@ def run_pilot(cfg=None):
     )
     thread = threading.Thread(target=gateway.serve_forever, daemon=True)
     thread.start()
-    tasks = sorted((ARTIFACTS / "tasks").iterdir())
     results = []
     try:
         for repetition in range(cfg["repetitions"]):
@@ -344,6 +376,7 @@ def run_pilot(cfg=None):
                         "model": client.config.model,
                         "llm": client.config.manifest(),
                         "litellm_version": version("litellm"),
+                        "trail_protocol": TRAIL_PROTOCOL,
                         "harness": "openhands-sdk",
                         "reasoning_effort": client.config.reasoning_effort,
                         "harbor_revision": cfg["harbor_revision"],

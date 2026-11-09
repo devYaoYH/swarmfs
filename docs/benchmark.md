@@ -31,7 +31,8 @@ uv run swarm-trails report
 
 Completed attempts are resumed by `experiment_id`; change that value for a fresh
 experiment. The shared spending ledger remains cumulative across experiment IDs.
-The runner freezes configuration and the LiteLLM version, refusing changed settings
+The runner freezes configuration, the LiteLLM version and the trail protocol,
+refusing changed settings
 under an existing ID. `prepare` writes generated task files,
 `verify` writes `artifacts/validation.json`, and `pilot` writes its per-attempt
 records, logs and trail database under `artifacts/pilot/<experiment_id>/`.
@@ -53,6 +54,9 @@ capture-only baseline versus visible decaying trails. Messaging, prompts, model,
 tools, initial source and verifier are held constant. Each pair gets an isolated
 trail namespace and two separate workspaces. This is one task family, not a held-out
 evaluation. Both instructions already name a target file, limiting navigation claims.
+Both arms now use an intent-aware file tool with a required short note. The published
+Luna results used the earlier observation-only protocol. Current profiles use fresh
+`intent-…-v1` experiment IDs; no paid benchmark has run for this new version.
 
 Primary result: joint completion success and the difference in **percentage points**.
 Secondary: input/output tokens and token savings. The paper's published baseline is
@@ -88,3 +92,26 @@ The pinned OpenHands image requires amd64 emulation on this Mac. The pilot uses 
 explicit, checked Docker subnet `10.254.254.0/28` because the host's automatic address
 pools were full. Change it in the runner if that subnet is already allocated elsewhere.
 Only this pilot's containers, network and named volumes are removed after each attempt.
+
+## Offline SDK check
+
+The normal `uv run pytest -q` suite uses no model endpoint. To also test required
+intent fields, SDK serialization, and real file operations in the pinned runtime:
+
+```sh
+docker run --rm --network none --platform linux/amd64 \
+  -e PYTHONPATH=/opt/swarmfs/src:/opt/swarmfs \
+  -e LITELLM_LOCAL_MODEL_COST_MAP=True \
+  -e LITELLM_TELEMETRY=False \
+  -v "$PWD/src:/opt/swarmfs/src:ro" \
+  -v "$PWD/bench:/opt/swarmfs/bench:ro" \
+  --entrypoint /opt/agent-server-venv/bin/python \
+  akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9 \
+  -m bench.sdk_check
+```
+
+The image must already be cached for an entirely offline run. No provider keys are
+passed. Checks write temporary files inside the disposable container; source mounts
+are read-only. The tool posts a declaration before touching the file, records the
+linked outcome, and leaves native editor output intact. The check also verifies
+self-exclusion and that declaration/outcome pairs count as one action.

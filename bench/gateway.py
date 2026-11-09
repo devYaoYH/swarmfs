@@ -76,6 +76,10 @@ class Handler(BaseHTTPRequestHandler):
                     payload["event_id"],
                     payload["path"],
                     payload["kind"],
+                    action_id=payload.get("action_id"),
+                    intent=payload.get("intent"),
+                    note=payload.get("note", ""),
+                    phase=payload.get("phase", "observed"),
                 )
                 self.reply(200, {"inserted": inserted})
             elif route == "/trail":

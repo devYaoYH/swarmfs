@@ -1,4 +1,4 @@
-"""Observed activity only: no content summaries or inferred shell read sets."""
+"""Decaying file activity: declared intent and linked execution outcomes."""
 
 import math
 import sqlite3
@@ -8,7 +8,18 @@ from contextlib import closing, contextmanager
 from pathlib import PurePosixPath
 
 KINDS = {"read", "edit"}
+INTENTS = {"read", "read_for_edit", "write"}
+PHASES = {"declared", "succeeded", "failed", "observed"}
 EXCLUDED = {".git", ".venv", "node_modules", "__pycache__", ".cache", ".env"}
+
+
+def normalize_note(note: str) -> str:
+    if not isinstance(note, str):
+        raise ValueError("intent note must be text")
+    note = " ".join(note.split())
+    if len(note) > 120 or any(ord(c) < 32 or 127 <= ord(c) < 160 for c in note):
+        raise ValueError("intent note must be at most 120 characters without controls")
+    return note
 
 
 def normalize_path(path: str) -> str:
@@ -35,22 +46,69 @@ class TrailStore:
                 );
                 CREATE INDEX IF NOT EXISTS episode_time ON events(episode, observed_at);
             """)
+            # Keep existing pilot databases readable; old rows remain observations.
+            columns = {row[1] for row in db.execute("PRAGMA table_info(events)")}
+            for name, definition in {
+                "action_id": "TEXT",
+                "intent": "TEXT",
+                "note": "TEXT NOT NULL DEFAULT ''",
+                "phase": "TEXT NOT NULL DEFAULT 'observed'",
+            }.items():
+                if name not in columns:
+                    db.execute(f"ALTER TABLE events ADD COLUMN {name} {definition}")
 
     @contextmanager
     def connect(self):
         with closing(sqlite3.connect(self.db_path, timeout=10)) as db, db:
             yield db
 
-    def deposit(self, episode: str, actor: str, event_id: str, path: str, kind: str) -> bool:
+    def deposit(
+        self,
+        episode: str,
+        actor: str,
+        event_id: str,
+        path: str,
+        kind: str,
+        *,
+        action_id: str | None = None,
+        intent: str | None = None,
+        note: str = "",
+        phase: str = "observed",
+    ) -> bool:
         if kind not in KINDS:
             raise ValueError("unsupported activity kind")
-        if not all(isinstance(v, str) and 0 < len(v) <= 200 for v in (episode, actor, event_id)):
+        if not all(
+            isinstance(v, str) and 0 < len(v) <= 200 and not any(ord(c) < 32 for c in v)
+            for v in (episode, actor, event_id, action_id or event_id)
+        ):
             raise ValueError("invalid event identity")
+        intent = intent or ("read" if kind == "read" else "write")
+        if intent not in INTENTS or (kind == "edit") != (intent == "write"):
+            raise ValueError("intent must match the file operation")
+        if phase not in PHASES:
+            raise ValueError("unsupported activity phase")
+        note = normalize_note(note)
+        if phase != "observed" and (not action_id or not note):
+            raise ValueError("declared actions and outcomes require an action ID and note")
         path = normalize_path(path)
         with self.connect() as db:
             inserted = db.execute(
-                "INSERT OR IGNORE INTO events VALUES (?, ?, ?, ?, ?, ?)",
-                (episode, actor, event_id, path, kind, self.clock()),
+                "INSERT OR IGNORE INTO events "
+                "(episode, actor, event_id, path, kind, observed_at, "
+                "action_id, intent, note, phase) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    episode,
+                    actor,
+                    event_id,
+                    path,
+                    kind,
+                    self.clock(),
+                    action_id,
+                    intent,
+                    note,
+                    phase,
+                ),
             ).rowcount
         return bool(inserted)
 
@@ -60,15 +118,39 @@ class TrailStore:
         now = self.clock()
         with self.connect() as db:
             rows = db.execute(
-                "SELECT actor, path, kind, observed_at FROM events "
+                "SELECT actor, path, kind, observed_at, COALESCE(action_id, event_id), "
+                "intent, note, phase FROM events "
                 "WHERE episode=? AND actor!=? AND observed_at>=? AND observed_at<=?",
                 (episode, actor, now - 3600, now),
             ).fetchall()
-        # Repeated reads by one actor in one minute contribute once, at the latest time.
+        # A declaration and its outcome describe ONE action. A late declaration
+        # cannot turn a completed/failed action back into a pending intention.
+        actions = {}
+        for author, path, kind, at, action_id, intent, note, phase in rows:
+            key = (author, action_id)
+            rank = (phase != "declared", at)
+            if key not in actions or rank > actions[key][0]:
+                actions[key] = (rank, path, kind, at, intent, note, phase)
         buckets = {}
-        for author, path, kind, at in rows:
+        contributors = defaultdict(dict)
+        for (author, _), (_, path, kind, at, intent, note, phase) in actions.items():
             key = (author, path, kind, int(at // 60))
             buckets[key] = max(buckets.get(key, at), at)
+            peers = contributors[(path, kind)]
+            previous = peers.get(author)
+            count = previous["actions"] + 1 if previous else 1
+            if previous is None or at > previous["latest_at"]:
+                peers[author] = {
+                    "actor": author,
+                    "actions": count,
+                    "latest_at": at,
+                    "age_seconds": now - at,
+                    "intent": intent or ("read" if kind == "read" else "write"),
+                    "note": note,
+                    "phase": phase,
+                }
+            else:
+                previous["actions"] = count
         per_actor = defaultdict(float)
         latest = defaultdict(float)
         authors = defaultdict(set)
@@ -88,6 +170,11 @@ class TrailStore:
                 "age_seconds": now - latest[(path, kind)],
                 "latest_at": latest[(path, kind)],
                 "actors": len(authors[(path, kind)]),
+                "actions": sum(p["actions"] for p in contributors[(path, kind)].values()),
+                "contributors": sorted(
+                    contributors[(path, kind)].values(),
+                    key=lambda p: (-p["latest_at"], p["actor"]),
+                ),
             }
             for path, kind in ranked[:limit]
         ]

@@ -1,8 +1,8 @@
 # SwarmFS
 
-A small activity-trail experiment for collaborating coding agents: observe where
-an agent successfully reads or edits a file, let that signal decay, and show a
-bounded amount of recent peer activity to another agent. The core uses Python's
+A small activity-trail experiment for collaborating coding agents: declare why
+an agent is opening or changing a file, record the outcome, let that signal decay,
+and show a bounded amount of attributed peer activity. The core uses Python's
 standard library and SQLite. The current implementation is a harness integration;
 FUSE, generated summaries and shared source files are outside its scope.
 
@@ -35,15 +35,26 @@ from swarmfs import TrailStore
 
 Path(".cache").mkdir(exist_ok=True)
 trails = TrailStore(".cache/trails.db")
-trails.deposit("demo", "agent-a", "event-1", "src/example.py", "edit")
+fields = dict(action_id="open-1", intent="read_for_edit", note="Check lookup order")
+trails.deposit("demo", "agent-a", "intent-1", "src/example.py", "read",
+               phase="declared", **fields)
+# Execute the file operation, then record succeeded or failed with the same action_id.
+trails.deposit("demo", "agent-a", "outcome-1", "src/example.py", "read",
+               phase="succeeded", **fields)
 print(trails.lookup("demo", "agent-b", half_life=300))
 PY
 ```
 
-Lookups return up to three ranked path/action records, exclude the querying agent,
-and stay within an episode. Repeated events are deduplicated; scores decay with
-a configurable half-life. A trail records an observation, not a claim that the
-peer's edit exists in the reader's workspace. [Core design](docs/design.md).
+Lookups return up to three ranked path/activity records with authors, distinct peer
+and action counts, and each author's latest intent, note and outcome. They exclude
+the querying agent and stay within an episode. An intent and its outcome count as
+one action. Repeated activity is capped; scores decay with a configurable half-life.
+Intent is advisory; peer file contents remain separate. [Core design](docs/design.md).
+
+OpenHands' file tool requires `intent=read|read_for_edit|write` and a one-line
+`intent_note` of up to 120 characters. Its wrapper records intent before executing,
+then records success or failure. No extra model turn is needed. Host-assigned actor
+identities distinguish self from peers; identity resumption is outside this MVP.
 
 ## Run the benchmark
 
@@ -78,6 +89,8 @@ Generated logs and ledgers stay in the ignored `artifacts/` directory.
 Original GPT-6 Luna pilot: four pair attempts, with two Jinja feature pairs and
 one attempt per pair in each arm.
 Both arms retain native messaging; the baseline captures activity without showing it.
+These preliminary results used observation-only trails. The newer intent-aware
+tool has passed offline integration checks; it has not had a paid benchmark run.
 
 | Arm | Joint completion | Total input + output tokens | Conservative cost |
 | --- | --- | --- | --- |
@@ -106,8 +119,10 @@ uv run pytest -q
 uv run python -m bench.micro
 ```
 
-All 27 offline tests passed for the initial pilot. Benchmark tests block external
-socket connections and mock model responses. The microbenchmark measures local
+Benchmark tests block external socket connections and mock model responses.
+The pinned SDK file-tool check also runs with Docker networking disabled; see
+[benchmark instructions](docs/benchmark.md#offline-sdk-check).
+The microbenchmark measures local
 SQLite deposit/lookup latency; it excludes HTTP, SDK and model latency.
 
 ## Repository layout

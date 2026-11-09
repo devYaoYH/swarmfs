@@ -37,7 +37,14 @@ def summarize(results: list[dict], budget: dict) -> dict:
         for arm in arms
     ) and bool(results)
     settings = {
-        json.dumps(r.get("llm", {"model": r.get("model")}), sort_keys=True) for r in results
+        json.dumps(
+            {
+                "llm": r.get("llm", {"model": r.get("model")}),
+                "trail_protocol": r.get("trail_protocol", "observed-v0"),
+            },
+            sort_keys=True,
+        )
+        for r in results
     }
     matched = matched and len(settings) == 1
     delta = (
@@ -72,6 +79,15 @@ def report(output: Path):
     summary["cumulative_gateway_conservative_usd"] = budget["conservative_usd"]
     with sqlite3.connect(output / "trails.db") as db:
         summary["captured_events"] = db.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        columns = {row[1] for row in db.execute("PRAGMA table_info(events)")}
+        summary["captured_actions"] = (
+            db.execute(
+                "SELECT COUNT(*) FROM (SELECT episode, actor, COALESCE(action_id, event_id) "
+                "FROM events GROUP BY episode, actor, COALESCE(action_id, event_id))"
+            ).fetchone()[0]
+            if "action_id" in columns
+            else summary["captured_events"]
+        )
         blocks = [row[0] for row in db.execute("SELECT body FROM delivered")]
         summary["delivered_blocks"] = len(blocks)
     ages = [int(age) for block in blocks for age in re.findall(r"(\d+)s ago", block)]
@@ -111,7 +127,8 @@ def report(output: Path):
             f"Cumulative gateway ledger, including other experiments/setup: "
             f"${budget['conservative_usd']:.4f}.",
             "",
-            f"Captured file actions: {summary['captured_events']}; "
+            f"Captured file actions: {summary['captured_actions']} "
+            f"({summary['captured_events']} lifecycle events); "
             f"trail blocks in successful API requests: {summary['delivered_blocks']}.",
             f"Displayed observation age: median {summary['displayed_age_seconds']['median']}s, "
             f"maximum {summary['displayed_age_seconds']['max']}s. "

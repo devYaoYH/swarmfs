@@ -1,4 +1,4 @@
-experiment_id = "litellm-luna-v1"
+experiment_id = "intent-luna-v1"
 repetitions = 1
 max_iterations = 40
 agent_timeout_seconds = 900

@@ -58,6 +58,33 @@ def test_offline_gateway_auth_routing_usage_and_model_guard(tmp_path, make_budge
             reply = c.post("/trail", json={}, headers={"Authorization": "Bearer b"}).json()
             assert "src/a.py" in reply["block"]
             assert "fake-key-never-live" not in json.dumps(reply)
+            # The authenticated caller owns the mark, even if it supplies a peer actor.
+            intent = {
+                "event_id": "intent-d",
+                "action_id": "file-action",
+                "path": "intent.py",
+                "kind": "read",
+                "intent": "read_for_edit",
+                "note": "Check lookup order",
+                "phase": "declared",
+                "actor": "pair:b",
+            }
+            assert c.post("/events", json=intent, headers={"Authorization": "Bearer a"}).is_success
+            own = c.post("/trail", json={}, headers={"Authorization": "Bearer a"}).json()
+            assert own["block"] == ""
+            peer = c.post("/trail", json={}, headers={"Authorization": "Bearer b"}).json()
+            assert "peer a" in peer["block"] and "Check lookup order" in peer["block"]
+            intent.update(event_id="intent-o", phase="succeeded")
+            assert c.post("/events", json=intent, headers={"Authorization": "Bearer a"}).is_success
+            row = next(
+                r for r in service.trails.lookup("pair", "pair:b") if r["path"] == "intent.py"
+            )
+            assert row["actions"] == 1 and row["contributors"][0]["phase"] == "succeeded"
+            intent.update(event_id="invalid", intent="write")
+            assert (
+                c.post("/events", json=intent, headers={"Authorization": "Bearer a"}).status_code
+                == 400
+            )
             # A new peer event may be injected only into the visible arm, at cadence.
             event.update(event_id="2", path="src/b.py")
             c.post("/events", json=event, headers={"Authorization": "Bearer a"})
@@ -74,7 +101,7 @@ def test_offline_gateway_auth_routing_usage_and_model_guard(tmp_path, make_budge
                 )
                 assert response.status_code == 200
             assert seen[-2]["messages"] == []
-            assert "src/b.py" in seen[-1]["messages"][-1]["content"]
+            assert "Peer activity" in seen[-1]["messages"][-1]["content"]
             with service.trails.connect() as db:
                 assert db.execute("SELECT COUNT(*) FROM delivered").fetchone()[0] == 1
             failed = c.post(

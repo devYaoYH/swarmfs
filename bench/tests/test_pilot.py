@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import yaml
 
@@ -39,5 +41,24 @@ def test_experiment_manifest_refuses_changed_model(tmp_path, monkeypatch):
     cfg = {"experiment_id": "test", "llm": {"model": "openai/first"}}
     pilot.freeze_config(cfg)
     pilot.freeze_config(cfg)
+    assert (
+        json.loads((tmp_path / "pilot/test/experiment.json").read_text())["trail_protocol"]
+        == "intent-v1"
+    )
     with pytest.raises(ValueError, match="new experiment_id"):
         pilot.freeze_config({**cfg, "llm": {"model": "openrouter/second"}})
+
+
+def test_pilot_refuses_stale_task_scripts_before_loading_credentials(tmp_path, monkeypatch):
+    from bench import pilot
+
+    monkeypatch.setattr(pilot, "ARTIFACTS", tmp_path)
+    (tmp_path / "validation.json").write_text('[{"mode":"oracle","reward":1}]')
+    (tmp_path / "tasks/old-task").mkdir(parents=True)
+
+    def forbidden(_):
+        raise AssertionError("must not access credentials or prepare a model client")
+
+    monkeypatch.setattr(pilot, "model_client", forbidden)
+    with pytest.raises(RuntimeError, match="run prepare first"):
+        pilot.run_pilot({})
