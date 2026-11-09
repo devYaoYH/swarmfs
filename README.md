@@ -4,7 +4,8 @@ A small activity-trail experiment for collaborating coding agents: declare why
 an agent is opening or changing a file, record the outcome, let that signal decay,
 and show a bounded amount of attributed peer activity. The core uses Python's
 standard library and SQLite. The current implementation is a harness integration;
-FUSE, generated summaries and shared source files are outside its scope.
+FUSE and generated summaries are outside its scope. The benchmark supports separate
+checkouts or one shared source tree.
 
 **Status:** early MVP, with preliminary CooperBench pilots using OpenHands SDK.
 
@@ -49,7 +50,7 @@ Lookups return up to three ranked path/activity records with authors, distinct p
 and action counts, and each author's latest intent, note and outcome. They exclude
 the querying agent and stay within an episode. An intent and its outcome count as
 one action. Repeated activity is capped; scores decay with a configurable half-life.
-Intent is advisory; peer file contents remain separate. [Core design](docs/design.md).
+Intent is advisory; workspace sharing is a benchmark setting. [Core design](docs/design.md).
 
 OpenHands' file tool requires `intent=read|read_for_edit|write` and a one-line
 `intent_note` of up to 120 characters. Its wrapper records intent before executing,
@@ -84,9 +85,18 @@ The shared spending ledger is capped at $4, with smaller per-agent profile limit
 Provider keys stay on the host; agents receive disposable gateway credentials.
 Generated logs and ledgers stay in the ignored `artifacts/` directory.
 
+For both agents to edit **one live checkout**, use
+[`bench/configs/openrouter-shared.toml`](bench/configs/openrouter-shared.toml).
+The [shared-workspace guide](docs/shared-workspace.md) explains setup, a model-free
+two-agent SDK check, controls and paired runs. Both agents share source while SDK
+conversations remain private; verification uses one final snapshot, without merging
+separate patches. The original profiles retain isolated workspaces.
+Offline validation passed the two-agent SDK check, all ten feature-pair controls
+and 76 tests. Shared-workspace completion results are pending a paid pilot.
+
 ## Preliminary benchmark results
 
-Latest pilot: DeepSeek V4.1 Flash 1017, pinned Relace FP4 route, five feature pairs
+Latest isolated-workspace pilot: DeepSeek V4.1 Flash 1017, pinned Relace FP4 route, five feature pairs
 across three Jinja task families, one attempt per arm. Both arms use the intent-aware
 file tool and native messaging. Only treatment sees peer trails.
 

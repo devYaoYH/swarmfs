@@ -25,11 +25,12 @@ class Gateway(ThreadingHTTPServer):
         llm: ModelClient,
         tokens: dict[str, str],
         half_life: float = 300,
+        workspace_mode: str = "isolated",
     ):
         self.trails, self.budget, self.llm, self.tokens = trails, budget, llm, tokens
         if budget.model != llm.config.model:
             raise ValueError("gateway and budget must use the same configured model")
-        self.presenter = TrailPresenter(trails)
+        self.presenter = TrailPresenter(trails, workspace_mode=workspace_mode)
         self.half_life = half_life
         self.visible_actors = set()
         self.calls = defaultdict(int)

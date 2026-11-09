@@ -71,6 +71,23 @@ def test_intent_protocol_cannot_be_compared_with_the_old_observation_protocol():
     assert summarize(runs, {"agents": []})["matched"] is False
 
 
+def test_shared_and_isolated_runs_are_not_a_matched_trail_comparison():
+    runs = [
+        {
+            "arm": arm,
+            "episode": arm,
+            "task": "1",
+            "repetition": 0,
+            "reward": 1,
+            "workspace_mode": mode,
+        }
+        for arm, mode in (("baseline", "isolated"), ("trails", "shared"))
+    ]
+    result = summarize(runs, {"agents": []})
+    assert result["matched"] is False
+    assert result["success_delta_percentage_points"] is None
+
+
 def test_report_counts_one_action_for_declaration_and_outcome(tmp_path):
     store = TrailStore(str(tmp_path / "trails.db"))
     fields = dict(action_id="a", intent="write", note="Add fallback")

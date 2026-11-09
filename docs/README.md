@@ -3,6 +3,9 @@
 - [Install and use SwarmFS](../README.md): landing page and core example.
 - [Implemented design](design.md): event capture, decay, ranking and boundaries.
 - [Run CooperBench locally](benchmark.md): setup, controls, model and spending.
+- [Shared-workspace experiment](shared-workspace.md): one live checkout, private
+  conversations, model-free SDK checks and snapshot verification.
+- [Shared-workspace offline validation](results/shared-workspace-validation-2026-11-09.json).
 - [Model and provider configuration](models.md): LiteLLM SDK, OpenRouter and smoke checks.
 - [Expanded DeepSeek pilot](results/deepseek-pilot-2026-11-09.md): five pairs,
   completion, token usage and trail coverage.

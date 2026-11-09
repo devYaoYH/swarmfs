@@ -1,0 +1,259 @@
+{
+  "kind": "offline-harness-validation",
+  "validated_at": "2026-11-09T12:16:25.882381+00:00",
+  "checkpoint_commit": "1c89e56",
+  "workspace_harness": {
+    "workspace_mode": "shared",
+    "protocol": "shared-workspace-v1",
+    "implementation_sha256": "7455340afc4375874f14fc40489043c6393a2dd464f70798f32fc93b0f8c1f8b"
+  },
+  "config": {
+    "experiment_id": "intent-deepseek-shared-v1",
+    "workspace_mode": "shared",
+    "repetitions": 1,
+    "max_iterations": 100,
+    "agent_timeout_seconds": 900,
+    "budget_usd": 4.0,
+    "per_agent_budget_usd": 0.5,
+    "provider_max_output_tokens": 943718,
+    "max_input_tokens": 1048576,
+    "half_life_seconds": 300,
+    "platform": "linux/amd64",
+    "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9",
+    "harbor_revision": "9c7a39b991d7e2205019f6be0598cbd22d84bfc3",
+    "cooperbench_revision": "63b9d44d9f39a02fccf5bf0052db48a917a011fd",
+    "llm": {
+      "model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "reasoning_effort": "none",
+      "openrouter_provider": "relace/fp4",
+      "input_usd_per_million": 0.006,
+      "output_usd_per_million": 0.5
+    },
+    "pairs": [
+      {
+        "repository": "pallets_jinja_task",
+        "task_id": 1621,
+        "features": [
+          1,
+          6
+        ]
+      },
+      {
+        "repository": "pallets_jinja_task",
+        "task_id": 1621,
+        "features": [
+          2,
+          9
+        ]
+      },
+      {
+        "repository": "pallets_jinja_task",
+        "task_id": 1621,
+        "features": [
+          4,
+          7
+        ]
+      },
+      {
+        "repository": "pallets_jinja_task",
+        "task_id": 1465,
+        "base_commit": "20eb7f5e33120f1717b78bdf85540ab75631187a",
+        "features": [
+          1,
+          3
+        ]
+      },
+      {
+        "repository": "pallets_jinja_task",
+        "task_id": 1559,
+        "base_commit": "896a62135bcc151f2997e028c5125bec2cb2431f",
+        "features": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  "profile_sha256": "49f58717d8f74a45f94986ec05c8eed8e080e518dc65974f1286cee39e668ee1",
+  "offline_tests_passed": 76,
+  "ruff_check": "passed",
+  "ruff_format_check": "passed",
+  "provider_model_calls": 0,
+  "sdk_check": {
+    "passed": true,
+    "model_calls": 0,
+    "scripted_replies": {
+      "agent1": 4,
+      "agent2": 4
+    },
+    "shared_file_roundtrip": true,
+    "private_sdk_state": true,
+    "single_snapshot": true,
+    "captured_lifecycle_events": 8,
+    "delivered_shared_workspace_blocks": 2
+  },
+  "controls": [
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "mode": "oracle",
+      "signature": "705b81b92e2905fe56227a0c00fd549f1b342c3295f970cd69c6a0853b5642f4",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6",
+      "implementation_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6"
+    },
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "mode": "untouched",
+      "signature": "705b81b92e2905fe56227a0c00fd549f1b342c3295f970cd69c6a0853b5642f4",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "mode": "oracle",
+      "signature": "4462c614f2270378eee3ce2a529f03c933eb087873f05e3fb94f245e740c2314",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6",
+      "implementation_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6"
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "mode": "untouched",
+      "signature": "4462c614f2270378eee3ce2a529f03c933eb087873f05e3fb94f245e740c2314",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "task": "cb-jinja-t1621-f4-7",
+      "mode": "oracle",
+      "signature": "246bb7dfb4ff92edb2ae8650d9760fd7a120db71b5fee05c82be484b67a3eb9a",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6",
+      "implementation_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6"
+    },
+    {
+      "task": "cb-jinja-t1621-f4-7",
+      "mode": "untouched",
+      "signature": "246bb7dfb4ff92edb2ae8650d9760fd7a120db71b5fee05c82be484b67a3eb9a",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "task": "cb-jinja-t1465-f1-3",
+      "mode": "oracle",
+      "signature": "962f2b1bc4b7d3d8b8ea8e667dd0e6733374a6c7c472b7f7fb50a79aa31c0025",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "9fe8f1c1cf54ea9961badac42d532306a99a0089578a69d660f33e39d7ccef79",
+      "implementation_sha256": "9fe8f1c1cf54ea9961badac42d532306a99a0089578a69d660f33e39d7ccef79"
+    },
+    {
+      "task": "cb-jinja-t1465-f1-3",
+      "mode": "untouched",
+      "signature": "962f2b1bc4b7d3d8b8ea8e667dd0e6733374a6c7c472b7f7fb50a79aa31c0025",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "task": "cb-jinja-t1559-f1-3",
+      "mode": "oracle",
+      "signature": "d4b4fd29d493b77050c7a8bdb1739e2e3120b1b480b50a9bd257c04a578e9923",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "9d382841c9377c907263b160682426ad819e0f702408461e69893af831a31849",
+      "implementation_sha256": "9d382841c9377c907263b160682426ad819e0f702408461e69893af831a31849"
+    },
+    {
+      "task": "cb-jinja-t1559-f1-3",
+      "mode": "untouched",
+      "signature": "d4b4fd29d493b77050c7a8bdb1739e2e3120b1b480b50a9bd257c04a578e9923",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "note": "Harness validation only. No shared-workspace agent completion experiment has run."
+}

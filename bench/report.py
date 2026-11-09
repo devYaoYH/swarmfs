@@ -42,6 +42,8 @@ def summarize(results: list[dict], budget: dict) -> dict:
             {
                 "llm": r.get("llm", {"model": r.get("model")}),
                 "trail_protocol": r.get("trail_protocol", "observed-v0"),
+                "workspace_mode": r.get("workspace_mode", "isolated"),
+                "workspace_harness": r.get("workspace_harness"),
                 "limits": {
                     k: r.get(k)
                     for k in (
@@ -69,6 +71,7 @@ def summarize(results: list[dict], budget: dict) -> dict:
         "arms": arms,
         "matched": matched,
         "models": sorted({r.get("model", "legacy") for r in results}),
+        "workspace_modes": sorted({r.get("workspace_mode", "isolated") for r in results}),
         "feature_pairs": len({r["task"] for r in results}),
         "task_families": len({r["task"].rsplit("-f", 1)[0] for r in results}),
         "success_delta_percentage_points": delta,
@@ -119,6 +122,7 @@ def report(output: Path):
         "# Preliminary CooperBench activity-trail pilot",
         "",
         "Models: " + ", ".join(summary["models"]) + " · OpenHands SDK · local Docker",
+        "Workspace modes: " + ", ".join(summary["workspace_modes"]),
         "",
         "| Arm | Successful pairs | Success % | Input tokens | Output tokens | "
         "USD* | Budget / iteration / stuck stops |",

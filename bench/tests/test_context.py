@@ -64,3 +64,13 @@ def test_outcome_updates_display_without_counting_another_action(store):
     trails.deposit("pair", "peer", "f", "a.py", "edit", phase="failed", **fields)
     block = presenter.block("pair", "self")
     assert "write/failed" in block and "1 action" in block
+
+
+def test_shared_trails_describe_live_workspace(store):
+    trails, _ = store
+    trails.deposit(
+        "pair", "peer", "d", "a.py", "edit", action_id="d", phase="declared", note="Change lookup"
+    )
+    block = TrailPresenter(trails, workspace_mode="shared").block("pair", "self")
+    assert "shared working tree" in block and "separate workspaces" not in block
+    assert "write/declared" in block and len(block.encode()) <= 300

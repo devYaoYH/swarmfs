@@ -20,6 +20,8 @@ from dotenv import dotenv_values
 from bench.budget import Budget
 from bench.gateway import Gateway, new_token
 from bench.llm import MODEL_ALIAS, ModelClient, ModelConfig
+from bench.shared import PROTOCOL as SHARED_PROTOCOL
+from bench.shared import SHARED_SCENARIO
 from swarmfs.trails import TrailStore
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +32,28 @@ DEFAULT_BASE = "a2920752fd111c2d52c88eb57487667b3cf0ea7b"
 
 
 def config(path=None):
-    return tomllib.loads(Path(path or ROOT / "pilot.toml").read_text())
+    cfg = tomllib.loads(Path(path or ROOT / "pilot.toml").read_text())
+    workspace_mode(cfg)
+    return cfg
+
+
+def workspace_mode(cfg):
+    mode = cfg.get("workspace_mode", "isolated")
+    if mode not in {"isolated", "shared"}:
+        raise ValueError("workspace_mode must be isolated or shared")
+    return mode
+
+
+def harness_manifest(cfg):
+    manifest = {"workspace_mode": workspace_mode(cfg)}
+    if workspace_mode(cfg) == "shared":
+        manifest.update(
+            protocol=SHARED_PROTOCOL,
+            implementation_sha256=hashlib.sha256(
+                (ROOT / "bench/shared.py").read_bytes()
+            ).hexdigest(),
+        )
+    return manifest
 
 
 def model_client(cfg):
@@ -91,8 +114,11 @@ def adapter_module():
 
 
 def task_paths(cfg):
+    root = ARTIFACTS / "tasks"
+    if workspace_mode(cfg) == "shared":
+        root /= "shared"
     return [
-        ARTIFACTS / "tasks" / f"cb-jinja-t{p['task_id']}-f{p['features'][0]}-{p['features'][1]}"
+        root / f"cb-jinja-t{p['task_id']}-f{p['features'][0]}-{p['features'][1]}"
         for p in cfg["pairs"]
     ]
 
@@ -126,8 +152,12 @@ def task_signature(task):
         task / "benchmark.json",
         *sorted((task / "tests").iterdir()),
         task / "solution/combined.patch",
+        *sorted((task / "environment").rglob("*.py")),
+        *sorted((task / "environment").rglob("*.sh")),
+        *sorted((task / "environment").rglob("instruction.md")),
+        *([task / "harness.json"] if (task / "harness.json").exists() else []),
     ]:
-        digest.update(path.name.encode() + b"\0" + path.read_bytes())
+        digest.update(str(path.relative_to(task)).encode() + b"\0" + path.read_bytes())
     return digest.hexdigest()
 
 
@@ -138,7 +168,7 @@ def prepare(cfg=None):
         if actual != cfg[key]:
             raise RuntimeError(f"{repository} must be pinned at {cfg[key]}")
     module = adapter_module()
-    output = ARTIFACTS / "tasks"
+    output = task_paths(cfg)[0].parent
     generated = []
     for pair in cfg["pairs"]:
         source = UPSTREAM / "CooperBench/dataset" / pair["repository"] / f"task{pair['task_id']}"
@@ -176,7 +206,7 @@ def prepare(cfg=None):
             overwrite=True,
         )
         # Both arms use the same intent-aware file tool, callbacks and LLM limits.
-        # Native collaboration and the Harbor verifier are retained.
+        # Shared mode replaces workspace assumptions and patch merging only.
         for actor in ("agent1", "agent2"):
             script = path / "environment" / actor / "run_agent.py"
             text = script.read_text()
@@ -205,6 +235,21 @@ def prepare(cfg=None):
                 + ")\n"
                 "    llm = LLM(**llm_kwargs)",
             )
+            if workspace_mode(cfg) == "shared":
+                marker = '        system_prompt_kwargs["collaboration"] = collab_section'
+                if marker not in text:
+                    raise RuntimeError("upstream collaboration prompt changed")
+                text = text.replace(
+                    marker,
+                    "        start = collab_section.index('## Scenario')\n"
+                    "        end = collab_section.index('## Communication', start)\n"
+                    "        collab_section = collab_section[:start] + "
+                    + repr(SHARED_SCENARIO)
+                    + " + collab_section[end:]\n"
+                    + marker,
+                )
+                instruction = script.with_name("instruction.md")
+                instruction.write_text(SHARED_SCENARIO + instruction.read_text())
             text = text.replace(
                 "    events_log: list[dict] = []",
                 "    events_log: list[dict] = []\n"
@@ -226,6 +271,16 @@ def prepare(cfg=None):
             script.write_text(text)
             entrypoint = script.with_name("entrypoint.sh")
             entry = entrypoint.read_text()
+            if workspace_mode(cfg) == "shared":
+                marker = "    git add -A 2>/dev/null || true\n"
+                marker += (
+                    "    git diff --cached HEAD > ${OUTPUT_DIR}/agent.patch 2>/dev/null || true"
+                )
+                if marker not in entry:
+                    raise RuntimeError("upstream patch extraction changed")
+                entry = entry.replace(
+                    marker, '    echo "[$AGENT_ID] Shared source captured once by the verifier."'
+                )
             marker = "from openhands.agent_server.__main__ import main"
             if marker not in entry:
                 raise RuntimeError("upstream server entrypoint changed")
@@ -235,6 +290,7 @@ def prepare(cfg=None):
                 )
             )
         (path / "trail-protocol.txt").write_text(TRAIL_PROTOCOL)
+        (path / "harness.json").write_text(json.dumps(harness_manifest(cfg), indent=2))
         shutil.copy(source / "runner.sh", path / "tests/runner.sh")
         (path / "benchmark.json").write_text(
             json.dumps(
@@ -252,9 +308,14 @@ def prepare(cfg=None):
     return generated
 
 
-def compose_file(task: Path, output: Path, *, actors: dict, port: int, cfg: dict):
+def compose_file(
+    task: Path, output: Path, *, actors: dict, port: int, cfg: dict, reference_patch=None
+):
     output.mkdir(parents=True, exist_ok=True)
     runtime = task_runtime(task, cfg)
+    shared = workspace_mode(cfg) == "shared"
+    if reference_patch is not None and (not shared or actors):
+        raise ValueError("reference patches are restricted to model-free shared controls")
     services = {
         "main": {
             "image": runtime["image"],
@@ -270,6 +331,38 @@ def compose_file(task: Path, output: Path, *, actors: dict, port: int, cfg: dict
         },
         "redis": {"image": "redis:7-alpine"},
     }
+    volumes = {"agent1_out": {}, "agent2_out": {}}
+    if shared:
+        volumes["workspace"] = {}
+        mount = {"type": "volume", "source": "workspace", "volume": {"nocopy": True}}
+        services["init"] = {
+            "image": runtime["image"],
+            "platform": cfg["platform"],
+            "entrypoint": [
+                "python3",
+                "-m",
+                "bench.shared",
+                "init",
+                "--base",
+                runtime["base_commit"],
+            ],
+            "environment": {"PYTHONPATH": "/opt/swarm-bench"},
+            "volumes": [
+                {**mount, "target": "/shared-workspace"},
+                f"{ROOT / 'bench'}:/opt/swarm-bench/bench:ro",
+            ],
+        }
+        if reference_patch is not None:
+            services["init"]["volumes"].append(f"{reference_patch}:/reference.patch:ro")
+            services["init"]["entrypoint"].extend(["--reference", "/reference.patch"])
+        services["main"]["depends_on"] = {"init": {"condition": "service_completed_successfully"}}
+        services["main"]["environment"] = {"PYTHONPATH": "/opt/swarm-bench"}
+        services["main"]["volumes"].extend(
+            [
+                {**mount, "target": "/shared-workspace", "read_only": True},
+                f"{ROOT / 'bench'}:/opt/swarm-bench/bench:ro",
+            ]
+        )
     for actor, token in actors.items():
         services[actor] = {
             "image": runtime["image"],
@@ -299,15 +392,70 @@ def compose_file(task: Path, output: Path, *, actors: dict, port: int, cfg: dict
             ],
             "depends_on": ["redis"],
         }
+        if shared:
+            services[actor]["entrypoint"] = ["bash", "/entrypoint.sh"]
+            services[actor]["volumes"].append({**mount, "target": "/workspace/repo"})
+            services[actor]["environment"].update(
+                OH_CONVERSATIONS_PATH="/agent_output/sdk/conversations",
+                OH_BASH_EVENTS_DIR="/agent_output/sdk/bash_events",
+            )
+            services[actor]["depends_on"] = {
+                "redis": {"condition": "service_started"},
+                "init": {"condition": "service_completed_successfully"},
+            }
     data = {
         "services": services,
-        "volumes": {"agent1_out": {}, "agent2_out": {}},
+        "volumes": volumes,
         "networks": {"default": {"ipam": {"config": [{"subnet": "10.254.254.0/28"}]}}},
     }
     path = output / "compose.yaml"
     path.write_text(yaml.safe_dump(data, sort_keys=False))
     path.chmod(0o600)  # Contains disposable gateway tokens, never the OpenAI key.
     return path
+
+
+def validation_path(cfg):
+    return ARTIFACTS / (
+        "validation-shared.json" if workspace_mode(cfg) == "shared" else "validation.json"
+    )
+
+
+def evaluation_entry(task, cfg):
+    if workspace_mode(cfg) == "shared":
+        return [
+            "python3",
+            "-m",
+            "bench.shared",
+            "verify",
+            "--base",
+            task_runtime(task, cfg)["base_commit"],
+        ]
+    return ["bash", "/tests/test.sh"]
+
+
+def shared_control(task, cfg, mode):
+    """Exercise the same init, read-only mount, snapshot and verifier as paid runs."""
+    output = ARTIFACTS / "validation-shared" / task.name / mode
+    output.mkdir(parents=True, exist_ok=True)
+    path = compose_file(
+        task,
+        output,
+        actors={},
+        port=1,
+        cfg=cfg,
+        reference_patch=task / "solution/combined.patch" if mode == "oracle" else None,
+    )
+    project = "swarm-control-" + str(os.getpid())
+    base = ["docker", "compose", "-p", project, "-f", str(path)]
+    try:
+        command([*base, "up", "-d"], log=output / "startup.log")
+        command(
+            [*base, "exec", "-T", "main", *evaluation_entry(task, cfg)],
+            log=output / "execution.log",
+        )
+        return json.loads((output / "verifier/reward.json").read_text())
+    finally:
+        subprocess.run([*base, "down", "-v"], capture_output=True, timeout=120)
 
 
 def verify(cfg=None):
@@ -318,6 +466,21 @@ def verify(cfg=None):
     for task in tasks:
         runtime = task_runtime(task, cfg)
         for mode in ("oracle", "untouched"):
+            if workspace_mode(cfg) == "shared":
+                try:
+                    reward = shared_control(task, cfg, mode)
+                    records.append(
+                        {
+                            "task": task.name,
+                            "mode": mode,
+                            "signature": task_signature(task),
+                            **reward,
+                        }
+                    )
+                except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                    records.append({"task": task.name, "mode": mode, "error": str(exc)})
+                print(json.dumps(records[-1]), flush=True)
+                continue
             output = ARTIFACTS / "validation" / task.name / mode
             output.mkdir(parents=True, exist_ok=True)
             patches = output / "patches"
@@ -375,7 +538,7 @@ Path('/logs/verifier/reward.json').write_text(json.dumps({
             except (RuntimeError, OSError) as exc:
                 records.append({"task": task.name, "mode": mode, "error": str(exc)})
             print(json.dumps(records[-1]), flush=True)
-    (ARTIFACTS / "validation.json").write_text(json.dumps(records, indent=2))
+    validation_path(cfg).write_text(json.dumps(records, indent=2))
     valid = all(
         (r.get("reward") == 1 if r["mode"] == "oracle" else r.get("reward") == 0)
         and not r.get("error")
@@ -388,7 +551,7 @@ Path('/logs/verifier/reward.json').write_text(json.dumps({
 
 def run_pilot(cfg=None):
     cfg = cfg or config()
-    validation = json.loads((ARTIFACTS / "validation.json").read_text())
+    validation = json.loads(validation_path(cfg).read_text())
     if not validation or any(
         r.get("error") or r.get("reward") != (r["mode"] == "oracle") for r in validation
     ):
@@ -400,6 +563,12 @@ def run_pilot(cfg=None):
         for task in tasks
     ):
         raise RuntimeError("run prepare first: task scripts must use the current trail protocol")
+    if any(
+        not (task / "harness.json").exists()
+        or json.loads((task / "harness.json").read_text()) != harness_manifest(cfg)
+        for task in tasks
+    ):
+        raise RuntimeError("run prepare and verify first: workspace harness changed")
     expected = {
         (task.name, mode, task_signature(task))
         for task in tasks
@@ -425,6 +594,7 @@ def run_pilot(cfg=None):
         llm=client,
         tokens={},
         half_life=cfg["half_life_seconds"],
+        workspace_mode=workspace_mode(cfg),
     )
     thread = threading.Thread(target=gateway.serve_forever, daemon=True)
     thread.start()
@@ -465,6 +635,8 @@ def run_pilot(cfg=None):
                         "llm": client.config.manifest(),
                         "litellm_version": version("litellm"),
                         "trail_protocol": TRAIL_PROTOCOL,
+                        "workspace_mode": workspace_mode(cfg),
+                        "workspace_harness": harness_manifest(cfg),
                         "runtime": task_runtime(task, cfg),
                         "max_iterations": cfg["max_iterations"],
                         "agent_timeout_seconds": cfg["agent_timeout_seconds"],
@@ -479,7 +651,7 @@ def run_pilot(cfg=None):
                     }
                     try:
                         command([*base, "up", "-d"], log=run_dir / "startup.log")
-                        # SDK entrypoints time out and extract patches on exit.
+                        # Both agent containers must stop before shared source is sampled.
                         for actor in actors:
                             container = command([*base, "ps", "-aq", actor]).strip()
                             command(
@@ -488,7 +660,7 @@ def run_pilot(cfg=None):
                                 log=run_dir / f"{actor}-wait.log",
                             )
                         command(
-                            [*base, "exec", "-T", "main", "bash", "/tests/test.sh"],
+                            [*base, "exec", "-T", "main", *evaluation_entry(task, cfg)],
                             log=run_dir / "evaluation.log",
                         )
                         record.update(json.loads((run_dir / "verifier/reward.json").read_text()))

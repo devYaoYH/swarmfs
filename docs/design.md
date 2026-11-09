@@ -31,7 +31,7 @@ Each SQLite event contains an episode, actor, event ID, repository-relative path
 action kind (`read`/`edit`), host receipt time, action ID, intent, note and phase.
 Existing SQLite databases migrate automatically; historical events remain
 `observed`, without fabricated notes or inferred read-for-edit intent.
-The episode scopes a benchmark pair; actors have separate workspaces.
+The episode scopes a benchmark pair; the harness selects separate or shared workspaces.
 `(episode, actor, event_id)` makes retries idempotent. Paths cannot escape the
 repository, contain control characters, or reference excluded locations such as
 `.git`, `.env`, caches or dependencies.
@@ -76,7 +76,7 @@ loader.py | peer agent2 | read_for_edit/succeeded, 8s ago | 1 peer, 9 actions: "
 
 Counts cover the same path/activity within the one-hour query window, exclude self,
 and count each action once, not both lifecycle events. Multiple authors' notes are
-never blended. The header identifies separate workspaces and untrusted notes.
+never blended. The header identifies the workspace mode and untrusted notes.
 Blocks are inserted transiently at the API boundary without replacing native tool output.
 
 Both arms use the same intent-aware tool and capture events. Only the treatment sees
@@ -89,8 +89,9 @@ results describe observation-only trails and are not mixed into new comparisons.
 
 Declared intent may change or be abandoned; even a successful edit may be reverted
 or incomplete. Activity does not establish correctness, ownership, importance or
-merge safety. The MVP has no FUSE layer, directory gists, embeddings, shared file
-contents or success-based reinforcement.
+merge safety. The MVP has no FUSE layer, directory gists, embeddings or success-based
+reinforcement. The [shared-workspace harness](shared-workspace.md) mounts source
+into both agents; sharing is handled outside the trail algorithm.
 
 Offline tests cover decay, expiry, lifecycle deduplication, attribution, caps,
 isolation, migration and integration contracts. A network-disabled check runs real

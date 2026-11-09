@@ -47,7 +47,9 @@ Published pilot: [results](results/pilot-2026-11-08.md) and
 checks and untouched source must fail. `pilot` refuses to run without those results.
 The pilot executes generated Harbor task sidecars directly with local Docker Compose,
 instead of requiring a Modal account or the Harbor orchestration package. It retains
-the pinned Harbor verifier, including its ordinary/union Git merge policy.
+the pinned Harbor verifier, including its ordinary/union Git merge policy, in
+the default isolated mode. The optional [shared-workspace mode](shared-workspace.md)
+evaluates one final source snapshot with the same feature runners instead.
 
 The default Luna profile uses two Jinja feature pairs, one repetition and two arms:
 capture-only baseline versus visible decaying trails. Messaging, prompts, model,
