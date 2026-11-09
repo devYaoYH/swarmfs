@@ -50,6 +50,8 @@ instead of requiring a Modal account or the Harbor orchestration package. It ret
 the pinned Harbor verifier, including its ordinary/union Git merge policy, in
 the default isolated mode. The optional [shared-workspace mode](shared-workspace.md)
 evaluates one final source snapshot with the same feature runners instead.
+The [shared DeepSeek pilot](results/deepseek-shared-pilot-2026-11-09.md) compares
+capture-only and visible trails, with the earlier isolated results as historical context.
 
 The default Luna profile uses two Jinja feature pairs, one repetition and two arms:
 capture-only baseline versus visible decaying trails. Messaging, prompts, model,

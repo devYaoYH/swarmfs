@@ -102,8 +102,13 @@ Trail ranking, 300-byte blocks, every-third-request cadence and the 1,800-byte s
 allowance are retained; source marks can still be crowded out by newer test/doc marks.
 This condition tests shared files without also changing the trail-selection policy.
 
-Offline controls establish harness correctness, not completion performance. Shared
-agent performance results should be reported only after the paid experiment runs.
+Offline controls establish harness correctness, not completion performance. The
+[first paid pilot](results/deepseek-shared-pilot-2026-11-09.md) completed all ten
+attempts: 3/5 joint successes in each shared arm, versus 2/5 in each earlier isolated
+arm. Groupby accounts for the additional completed pair. Trails used 17.2% more
+tokens overall; excluding the failed translation pair as a post-hoc diagnostic,
+they used 24.9% fewer. The report retains SDK stops, a recovered provider rate limit,
+its held reservation and the limits of the historical comparison.
 
 ## Validation on 2026-11-09
 
