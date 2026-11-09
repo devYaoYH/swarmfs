@@ -30,6 +30,7 @@ def summarize(results: list[dict], budget: dict) -> dict:
             "errors": sum(bool(r.get("error") or r.get("upstream_errors")) for r in runs),
             "budget_cutoff_agents": sum(r.get("budget_cutoff_agents", 0) for r in runs),
             "iteration_cutoff_agents": sum(r.get("iteration_cutoff_agents", 0) for r in runs),
+            "stuck_cutoff_agents": sum(r.get("stuck_cutoff_agents", 0) for r in runs),
         }
     matched = all(
         {(r["task"], r["repetition"]) for r in results if r["arm"] == arm}
@@ -87,6 +88,11 @@ def report(output: Path):
         record["iteration_cutoff_agents"] = len(
             set(re.findall(r"^(agent\d+)-\d+[^\n]*Max iterations reached", log, re.MULTILINE))
         )
+        record["stuck_cutoff_agents"] = len(
+            set(
+                re.findall(r"^(agent\d+)-\d+[^\n]*Remote conversation got stuck", log, re.MULTILINE)
+            )
+        )
     budget = json.loads((output / "budget.json").read_text())
     summary = summarize(results, budget)
     summary["cumulative_gateway_conservative_usd"] = budget["conservative_usd"]
@@ -115,7 +121,7 @@ def report(output: Path):
         "Models: " + ", ".join(summary["models"]) + " · OpenHands SDK · local Docker",
         "",
         "| Arm | Successful pairs | Success % | Input tokens | Output tokens | "
-        "USD* | Budget / iteration cutoffs |",
+        "USD* | Budget / iteration / stuck stops |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     delta = summary["success_delta_percentage_points"]
@@ -126,7 +132,7 @@ def report(output: Path):
             f"| {name} | {arm['successes']}/{arm['attempts']} | {percent} | "
             f"{arm['input_tokens']} | {arm['output_tokens']} | "
             f"${arm['conservative_usd']:.4f} | {arm['budget_cutoff_agents']} / "
-            f"{arm['iteration_cutoff_agents']} |"
+            f"{arm['iteration_cutoff_agents']} / {arm['stuck_cutoff_agents']} |"
         )
     lines.extend(
         [

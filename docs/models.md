@@ -83,6 +83,8 @@ with one capture-only and one visible-trail attempt per pair. It retains the
 900-second per-agent timeout, uses the CooperBench SDK's 100-iteration setting,
 and permits $0.50 per agent assigned to a feature. The cumulative $4 ledger is
 unchanged, including earlier runs and setup.
+The [preliminary results](results/deepseek-pilot-2026-11-09.md) report completion,
+token usage, cost and the observed coverage of intent trails.
 
 There is no fixed 4,096-token response ceiling. The checked Relace FP4 endpoint
 advertises 943,718 completion tokens and a 1,048,576-token context window. Before

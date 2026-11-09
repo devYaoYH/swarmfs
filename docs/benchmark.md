@@ -49,7 +49,7 @@ The pilot executes generated Harbor task sidecars directly with local Docker Com
 instead of requiring a Modal account or the Harbor orchestration package. It retains
 the pinned Harbor verifier, including its ordinary/union Git merge policy.
 
-The current pilot uses two Jinja feature pairs, one repetition and two arms:
+The default Luna profile uses two Jinja feature pairs, one repetition and two arms:
 capture-only baseline versus visible decaying trails. Messaging, prompts, model,
 tools, initial source and verifier are held constant. Each pair gets an isolated
 trail namespace and two separate workspaces. This is one task family, not a held-out
@@ -57,6 +57,8 @@ evaluation. Both instructions already name a target file, limiting navigation cl
 Both arms now use an intent-aware file tool with a required short note. The published
 Luna results used the earlier observation-only protocol. Current profiles use fresh
 `intent-…-v1` experiment IDs; the expanded DeepSeek run uses its own manifest and result directory.
+The [expanded DeepSeek results](results/deepseek-pilot-2026-11-09.md) cover five pairs
+across three task families; that profile and task set are described below.
 
 Primary result: joint completion success and the difference in **percentage points**.
 Secondary: input/output tokens and token savings. The paper's published baseline is
@@ -126,8 +128,8 @@ The profile selects exactly these tasks; unrelated generated tasks are ignored.
 | Jinja 1621 | 1 + 6 | Fallback search paths + path transformation (original pair) |
 | Jinja 1621 | 2 + 9 | Path normalization + cache invalidation monitoring (original pair) |
 | Jinja 1621 | 4 + 7 | Search-path priorities + environment/home expansion |
-| Jinja 1465 | 1 + 3 | Case-sensitive groupby + reverse group order |
-| Jinja 1559 | 1 + 3 | Translation context + translation domains |
+| Jinja 1465 | 1 + 3 | Case-sensitive groupby + custom field separators |
+| Jinja 1559 | 1 + 3 | Translation context + priority-based fallback |
 
 Each task pins its original repository commit and uses its own public runner and
 test patches. The cached image supplies the SDK, dependencies and repository

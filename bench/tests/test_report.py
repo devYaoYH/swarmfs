@@ -78,8 +78,27 @@ def test_report_counts_one_action_for_declaration_and_outcome(tmp_path):
     store.deposit("pair", "peer", "s", "a.py", "edit", phase="succeeded", **fields)
     with sqlite3.connect(tmp_path / "trails.db") as db:
         db.execute("CREATE TABLE delivered (body TEXT)")
-    (tmp_path / "results.json").write_text("[]")
+    (tmp_path / "results.json").write_text(
+        json.dumps(
+            [
+                {
+                    "episode": "run",
+                    "task": "t1",
+                    "arm": "baseline",
+                    "repetition": 0,
+                    "reward": 0,
+                }
+            ]
+        )
+    )
+    (tmp_path / "run").mkdir()
+    (tmp_path / "run/containers.log").write_text(
+        "agent1-1 | [agent1] Max iterations reached after 212 steps.\n"
+        "agent2-1 | [agent2] Agent error: Remote conversation got stuck\n"
+    )
     (tmp_path / "budget.json").write_text('{"agents":[],"conservative_usd":0}')
     report(tmp_path)
     summary = json.loads((tmp_path / "summary.json").read_text())
     assert summary["captured_events"] == 2 and summary["captured_actions"] == 1
+    assert summary["arms"]["baseline"]["iteration_cutoff_agents"] == 1
+    assert summary["arms"]["baseline"]["stuck_cutoff_agents"] == 1

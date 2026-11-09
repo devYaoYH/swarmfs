@@ -6,7 +6,7 @@ and show a bounded amount of attributed peer activity. The core uses Python's
 standard library and SQLite. The current implementation is a harness integration;
 FUSE, generated summaries and shared source files are outside its scope.
 
-**Status:** early MVP, with a preliminary CooperBench pilot using OpenHands SDK.
+**Status:** early MVP, with preliminary CooperBench pilots using OpenHands SDK.
 
 ## Install
 
@@ -86,28 +86,30 @@ Generated logs and ledgers stay in the ignored `artifacts/` directory.
 
 ## Preliminary benchmark results
 
-Original GPT-6 Luna pilot: four pair attempts, with two Jinja feature pairs and
-one attempt per pair in each arm.
-Both arms retain native messaging; the baseline captures activity without showing it.
-These preliminary results used observation-only trails. The newer intent-aware
-tool has passed offline integration checks; it has not had a paid benchmark run.
+Latest pilot: DeepSeek V4.1 Flash 1017, pinned Relace FP4 route, five feature pairs
+across three Jinja task families, one attempt per arm. Both arms use the intent-aware
+file tool and native messaging. Only treatment sees peer trails.
 
-| Arm | Joint completion | Total input + output tokens | Conservative cost |
+| Arm | Joint completion | Input + output tokens | Conservative cost |
 | --- | --- | --- | --- |
-| Baseline | 0/2 (0%) | 2,055,294 | $0.4165 |
-| Visible decaying trails | 0/2 (0%) | 1,618,965 | $0.3290 |
+| Capture-only | 2/5 (40%) | 6,659,447 | $0.0827 |
+| Visible intent trails | 2/5 (40%) | 4,592,455 | $0.0602 |
 
-The observed completion delta was 0 percentage points and the trail arm used
-21.2% fewer tokens. Conservative total spending, including rejected setup requests,
-was $0.7902; this is an upper estimate, not a provider billing statement.
+The trail arm used 31.0% fewer tokens. Most of that difference came from the failing
+translation pair, where agents encountered different SDK stops; it is a preliminary
+observation. Across the other four pairs, the post-hoc reduction was 4.7%.
+The new run cost approximately $0.143 conservatively ($0.132 provider-reported).
 
-This is an integration smoke pilot, not a powered comparison. The small sample,
-single task family and spending/iteration cutoffs limit interpretation. Eight trail
-blocks were delivered, with a median observation age of 4 seconds against a
-300-second half-life. Further runs are needed to assess usefulness and decay.
+Limits were 100 SDK iterations, 900 seconds and $0.50 per agent, with no fixed
+response-length ceiling beyond provider capacity and remaining dollars. All ten
+reference/negative controls passed. No budget or wall-clock cutoff occurred.
+Captured 143 file actions and delivered 21 blocks to all ten treatment agents.
+Read-for-edit was used once in capture-only and never shown to peers, so its benefit
+remains untested in this run.
 
-[Full results and limitations](docs/results/pilot-2026-11-08.md) ·
-[Machine-readable results and manifest](docs/results/pilot-2026-11-08.json)
+[Latest results and limitations](docs/results/deepseek-pilot-2026-11-09.md) ·
+[Machine-readable results](docs/results/deepseek-pilot-2026-11-09.json) ·
+[Earlier Luna pilot](docs/results/pilot-2026-11-08.md)
 
 ## Check without model access
 
