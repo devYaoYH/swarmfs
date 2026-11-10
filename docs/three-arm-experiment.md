@@ -21,6 +21,15 @@ parallelism. Solo can allocate its pooled allowance freely between the two featu
 Response length remains bounded by provider capacity and remaining dollars.
 The cumulative $4 gateway cap is unchanged.
 
+## Preliminary results
+
+The [first three-condition pilot](results/deepseek-three-arm-pilot-2026-11-10.md)
+retains the ten completed shared attempts and adds five solo attempts. Shared control
+and shared trails each completed 3/5 pairs; solo completed 4/5. The original solo
+translation attempt was interrupted by provider 429s and a reservation-driven budget
+cutoff. A separate diagnostic retry is excluded from the primary comparison. See the
+report for per-pair results, tokens, costs and interpretation limits.
+
 ## Extend the saved pilot
 
 The two shared conditions are already saved under `intent-deepseek-shared-v1`.

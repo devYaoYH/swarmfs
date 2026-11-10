@@ -92,7 +92,7 @@ two-agent SDK check, controls and paired runs. Both agents share source while SD
 conversations remain private; verification uses one final snapshot, without merging
 separate patches. The original profiles retain isolated workspaces.
 Offline validation passed the two-agent SDK check, all ten feature-pair controls
-and 76 tests. The first paid shared-workspace pilot is reported below.
+and 79 offline tests. The expanded three-condition pilot is reported below.
 
 The [three-condition experiment](docs/three-arm-experiment.md) adds a single agent
 implementing both features, alongside shared control and shared trails. Use
@@ -102,41 +102,44 @@ to run all three conditions afresh.
 
 ## Preliminary benchmark results
 
-DeepSeek V4.1 Flash 1017, pinned Relace FP4 route, the same five feature pairs across
-three Jinja task families, one attempt per arm. Both arms use the intent-aware file
-tool and native messaging. Only treatment sees peer trails.
+DeepSeek V4.1 Flash 1017, pinned Relace FP4 route, five feature pairs across three
+Jinja task families. Each pair now has the three requested conditions. Team agents
+start with one feature each and can message; solo receives both requests.
 
-| Workspace | Arm | Joint completion | Input + output tokens | Settled conservative cost |
-| --- | --- | --- | --- | --- |
-| Isolated (earlier) | Capture-only | 2/5 (40%) | 6,659,447 | $0.0827 |
-| Isolated (earlier) | Visible trails | 2/5 (40%) | 4,592,455 | $0.0602 |
-| Shared | Capture-only | 3/5 (60%) | 5,791,180 | $0.0762 |
-| Shared | Visible trails | 3/5 (60%) | 6,789,566 | $0.0835 |
+| Condition | Joint completion | Input + output tokens | Settled conservative cost |
+| --- | --- | --- | --- |
+| Shared filesystem, no visible trails | 3/5 (60%) | 5,791,180 | $0.0762 |
+| Shared filesystem, visible trails | 3/5 (60%) | 6,789,566 | $0.0835 |
+| Single agent, both features | 4/5 (80%) | 3,475,856 | $0.0441 |
 
-Both shared arms gained the groupby pair, which previously failed after integrating
-overlapping changes. In the shared trail trace, an agent saw its teammate's separator
-test fail and repaired the regression before finishing. Completion tied between the
-shared arms. Trails used 17.2% more tokens overall, driven by the failed translation
-run and SDK stops; excluding translation as a post-hoc diagnostic, they used 24.9%
-fewer tokens across the other four pairs. These are preliminary observations.
+Each condition gets $1 and 200 SDK iterations per pair: teams split these across two
+agents; solo pools them. All use a 900-second wall limit and the same feature tests.
+Teams can work in parallel. Responses have no fixed short length cap.
 
-The shared pilot cost $0.1597 for settled calls conservatively ($0.1480
-provider-reported). A recovered provider 429 left a separate $0.4721 reservation
-in the ledger; that held amount is excluded from the table and is not confirmed spend.
+Solo passed the searchpath-priority pair that both teams missed. Its translation
+attempt hit three provider 429 errors, then a budget cutoff caused by retained
+reservations. That interrupted attempt stays in the primary table; a separately
+labelled infrastructure retry also hit three 429s and passed one of two features.
+It is excluded from primary scores and tokens. Token totals
+include all failed and stopped attempts. These are preliminary results from one
+attempt per condition; solo was added after the saved team runs.
 
-Limits were 100 SDK iterations, 900 seconds and $0.50 per agent, with no fixed
-response-length ceiling beyond provider capacity and remaining dollars. All ten
-reference/negative controls passed. No budget or wall-clock cutoff occurred.
-The shared run captured 147 file actions and delivered 21 blocks to nine treatment
-agents. Most displayed entries describe completed operations; only one pending
-write and one read-for-edit entry were shown. The historical workspace comparison
-also changes prompts, SDK-state placement and integration policy, so it does not
-establish a causal filesystem or trail effect.
+The five primary solo attempts cost $0.0409 provider-reported ($0.0441 settled
+conservatively). Unsettled reservations of $0.9864 for solo and $0.4721 for shared
+trails are excluded from the table and are not confirmed spend. The ten completed
+team attempts were reused. All ten solo reference/negative controls and a real
+one-agent SDK check passed without model access before paid calls.
 
-[Shared results and comparison](docs/results/deepseek-shared-pilot-2026-11-09.md) ·
-[Machine-readable results](docs/results/deepseek-shared-pilot-2026-11-09.json) ·
-[Earlier isolated pilot](docs/results/deepseek-pilot-2026-11-09.md) ·
-[Earlier Luna pilot](docs/results/pilot-2026-11-08.md)
+[Three-condition results and per-pair outcomes](docs/results/deepseek-three-arm-pilot-2026-11-10.md) ·
+[Machine-readable results and audit](docs/results/deepseek-three-arm-pilot-2026-11-10.json) ·
+[Experiment and reproduction](docs/three-arm-experiment.md)
+
+Earlier isolated runs completed 2/5 pairs in each arm, compared with 3/5 in each
+shared arm. The historical comparison also changes prompts, SDK-state placement and
+integration policy, so it does not establish a causal filesystem effect.
+[Shared versus isolated results](docs/results/deepseek-shared-pilot-2026-11-09.md) ·
+[Isolated pilot](docs/results/deepseek-pilot-2026-11-09.md) ·
+[Luna pilot](docs/results/pilot-2026-11-08.md)
 
 ## Check without model access
 

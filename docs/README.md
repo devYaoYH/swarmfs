@@ -7,6 +7,9 @@
   conversations, model-free SDK checks and snapshot verification.
 - [Three-condition experiment](three-arm-experiment.md): shared control, shared trails
   and one agent implementing both features with equal task-level allowances.
+- [Three-condition preliminary results](results/deepseek-three-arm-pilot-2026-11-10.md):
+  five pairs with shared control, shared trails and a solo combined-feature baseline.
+- [Three-condition results and audit as JSON](results/deepseek-three-arm-pilot-2026-11-10.json).
 - [Shared-workspace offline validation](results/shared-workspace-validation-2026-11-09.json).
 - [Model and provider configuration](models.md): LiteLLM SDK, OpenRouter and smoke checks.
 - [Shared DeepSeek pilot and historical comparison](results/deepseek-shared-pilot-2026-11-09.md):

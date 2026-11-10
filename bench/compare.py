@@ -39,6 +39,9 @@ def compare(team: Path, solo: Path, output: Path):
     keys = [(r["task"], r["repetition"], r["arm"]) for r in records]
     if len(set(keys)) != len(keys):
         raise ValueError("duplicate attempts")
+    expected = {(task, i) for task in inputs[0] for i in range(configs[0].get("repetitions", 1))}
+    if {(r["task"], r["repetition"]) for r in records} != expected:
+        raise ValueError("comparison requires every configured task and repetition")
     for task, repetition in {(r["task"], r["repetition"]) for r in records}:
         runs = [r for r in records if r["task"] == task and r["repetition"] == repetition]
         if {r["arm"] for r in runs} != {"baseline", "trails", "solo"}:
@@ -97,8 +100,12 @@ def compare(team: Path, solo: Path, output: Path):
                 "sources": [str(team), str(solo)],
                 "manifests": sources,
                 "evaluation_inputs": inputs[0],
-                "allocation": "Equal $1 and 200 SDK iterations per task; 900 seconds wall time. "
-                "Solo is serial; team has two concurrent agents.",
+                "allocation": {
+                    "task_budget_usd": records[0]["task_budget_usd"],
+                    "task_sdk_iterations": records[0]["task_iteration_allowance"],
+                    "wall_limit_seconds": records[0]["agent_timeout_seconds"],
+                    "note": "Solo is serial; team has two concurrent agents.",
+                },
                 "note": "Solo appended after saved team runs; "
                 "not a concurrently randomized three-arm experiment.",
             },
@@ -126,20 +133,29 @@ def compare(team: Path, solo: Path, output: Path):
         for arm in ("baseline", "trails")
     }
     (output / "summary.json").write_text(json.dumps(summary, indent=2))
+    allocation = records[0]
     with (output / "report.md").open("a") as doc:
         doc.write(
-            "\n## Single-agent baseline\n\nOne agent receives both feature requests, $1 and "
-            "200 SDK iterations; the two-agent arms share those total allowances. "
-            "All conditions have the same 900-second wall limit. "
+            "\n## Single-agent baseline\n\nOne agent receives both feature requests, "
+            f"${allocation['task_budget_usd']:g} and {allocation['task_iteration_allowance']} "
+            "SDK iterations; the two-agent arms share those total allowances. "
+            "All conditions have the same "
+            f"{allocation['agent_timeout_seconds']}-second wall limit. "
             "Solo was appended to saved team results.\n\n"
         )
-        doc.write("| Task | Shared control | Shared trails | Single agent, both features |\n")
+        doc.write(
+            "| Task / repetition | Shared control | Shared trails | Single agent, both features |\n"
+        )
         doc.write("| --- | --- | --- | --- |\n")
-        for task in inputs[0]:
-            row = {r["arm"]: r.get("reward") == 1 for r in records if r["task"] == task}
+        for task, repetition in sorted(expected):
+            row = {
+                r["arm"]: r.get("reward") == 1
+                for r in records
+                if r["task"] == task and r["repetition"] == repetition
+            }
             doc.write(
                 "| "
-                + task
+                + f"{task} / {repetition}"
                 + " | "
                 + " | ".join("Pass" if row[a] else "Fail" for a in ("baseline", "trails", "solo"))
                 + " |\n"

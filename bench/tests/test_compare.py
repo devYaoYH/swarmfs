@@ -78,6 +78,16 @@ def test_three_conditions_reuse_saved_results_and_enforce_equal_task_allowances(
     assert summary["matched"] is True
     assert summary["captured_actions"] == 3
     assert summary["comparisons_to_solo"]["baseline"]["completion_delta_percentage_points"] == -100
+    for directory in (team, solo):
+        manifest = json.loads((directory / "experiment.json").read_text())
+        manifest["config"]["repetitions"] = 2
+        (directory / "experiment.json").write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="every configured"):
+        compare(team, solo, tmp_path / "incomplete")
+    for directory in (team, solo):
+        manifest = json.loads((directory / "experiment.json").read_text())
+        manifest["config"].pop("repetitions")
+        (directory / "experiment.json").write_text(json.dumps(manifest))
     runs = json.loads((solo / "results.json").read_text())
     runs[0]["per_agent_budget_usd"] = 0.5
     (solo / "results.json").write_text(json.dumps(runs))

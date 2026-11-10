@@ -1,0 +1,1018 @@
+{
+  "date": "2026-11-10",
+  "kind": "three-condition-pilot",
+  "source_revisions": {
+    "shared": "96391ac947de7446753945f4241d22593d183bb9",
+    "solo": "40553291a1a6eb3c92be4937b3cd268bebdf2e3e"
+  },
+  "manifests": {
+    "shared": {
+      "config": {
+        "experiment_id": "intent-deepseek-shared-v1",
+        "workspace_mode": "shared",
+        "repetitions": 1,
+        "max_iterations": 100,
+        "agent_timeout_seconds": 900,
+        "budget_usd": 4.0,
+        "per_agent_budget_usd": 0.5,
+        "provider_max_output_tokens": 943718,
+        "max_input_tokens": 1048576,
+        "half_life_seconds": 300,
+        "platform": "linux/amd64",
+        "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9",
+        "harbor_revision": "9c7a39b991d7e2205019f6be0598cbd22d84bfc3",
+        "cooperbench_revision": "63b9d44d9f39a02fccf5bf0052db48a917a011fd",
+        "llm": {
+          "model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+          "api_key_env": "OPENROUTER_API_KEY",
+          "reasoning_effort": "none",
+          "openrouter_provider": "relace/fp4",
+          "input_usd_per_million": 0.006,
+          "output_usd_per_million": 0.5
+        },
+        "pairs": [
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1621,
+            "features": [
+              1,
+              6
+            ]
+          },
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1621,
+            "features": [
+              2,
+              9
+            ]
+          },
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1621,
+            "features": [
+              4,
+              7
+            ]
+          },
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1465,
+            "base_commit": "20eb7f5e33120f1717b78bdf85540ab75631187a",
+            "features": [
+              1,
+              3
+            ]
+          },
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1559,
+            "base_commit": "896a62135bcc151f2997e028c5125bec2cb2431f",
+            "features": [
+              1,
+              3
+            ]
+          }
+        ]
+      },
+      "litellm_version": "1.104.3",
+      "trail_protocol": "intent-v1"
+    },
+    "solo": {
+      "config": {
+        "experiment_id": "intent-deepseek-solo-v1",
+        "arms": [
+          "solo"
+        ],
+        "solo_budget_usd": 1.0,
+        "solo_max_iterations": 200,
+        "workspace_mode": "shared",
+        "repetitions": 1,
+        "max_iterations": 100,
+        "agent_timeout_seconds": 900,
+        "budget_usd": 4.0,
+        "per_agent_budget_usd": 0.5,
+        "provider_max_output_tokens": 943718,
+        "max_input_tokens": 1048576,
+        "half_life_seconds": 300,
+        "platform": "linux/amd64",
+        "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9",
+        "harbor_revision": "9c7a39b991d7e2205019f6be0598cbd22d84bfc3",
+        "cooperbench_revision": "63b9d44d9f39a02fccf5bf0052db48a917a011fd",
+        "llm": {
+          "model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+          "api_key_env": "OPENROUTER_API_KEY",
+          "reasoning_effort": "none",
+          "openrouter_provider": "relace/fp4",
+          "input_usd_per_million": 0.006,
+          "output_usd_per_million": 0.5
+        },
+        "pairs": [
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1621,
+            "features": [
+              1,
+              6
+            ]
+          },
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1621,
+            "features": [
+              2,
+              9
+            ]
+          },
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1621,
+            "features": [
+              4,
+              7
+            ]
+          },
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1465,
+            "base_commit": "20eb7f5e33120f1717b78bdf85540ab75631187a",
+            "features": [
+              1,
+              3
+            ]
+          },
+          {
+            "repository": "pallets_jinja_task",
+            "task_id": 1559,
+            "base_commit": "896a62135bcc151f2997e028c5125bec2cb2431f",
+            "features": [
+              1,
+              3
+            ]
+          }
+        ]
+      },
+      "litellm_version": "1.104.3",
+      "trail_protocol": "intent-v1"
+    }
+  },
+  "allocation": {
+    "task_budget_usd": 1,
+    "task_sdk_iterations": 200,
+    "wall_limit_seconds": 900,
+    "team_agent_count": 2,
+    "solo_agent_count": 1,
+    "note": "Same task dollars/iterations and elapsed-time limit. Teams have parallelism; aggregate agent-seconds are not matched."
+  },
+  "summary": {
+    "arms": {
+      "baseline": {
+        "attempts": 5,
+        "successes": 3,
+        "success_percent": 60.0,
+        "input_tokens": 5707261,
+        "output_tokens": 83919,
+        "conservative_usd": 0.076203066,
+        "provider_reported_usd": 0.070804282,
+        "reported_cost_requests": 260,
+        "unsettled_requests": 0,
+        "errors": 0,
+        "budget_cutoff_agents": 0,
+        "iteration_cutoff_agents": 0,
+        "stuck_cutoff_agents": 1
+      },
+      "trails": {
+        "attempts": 5,
+        "successes": 3,
+        "success_percent": 60.0,
+        "input_tokens": 6703044,
+        "output_tokens": 86522,
+        "conservative_usd": 0.555587522,
+        "provider_reported_usd": 0.077154784,
+        "reported_cost_requests": 297,
+        "unsettled_requests": 1,
+        "errors": 1,
+        "budget_cutoff_agents": 0,
+        "iteration_cutoff_agents": 1,
+        "stuck_cutoff_agents": 1
+      },
+      "solo": {
+        "attempts": 5,
+        "successes": 4,
+        "success_percent": 80.0,
+        "input_tokens": 3428734,
+        "output_tokens": 47122,
+        "conservative_usd": 1.030566318,
+        "provider_reported_usd": 0.04086582,
+        "reported_cost_requests": 125,
+        "unsettled_requests": 3,
+        "errors": 1,
+        "budget_cutoff_agents": 1,
+        "iteration_cutoff_agents": 0,
+        "stuck_cutoff_agents": 0
+      }
+    },
+    "matched": true,
+    "models": [
+      "openrouter/deepseek/deepseek-v4.1-flash-1017"
+    ],
+    "workspace_modes": [
+      "shared"
+    ],
+    "feature_pairs": 5,
+    "task_families": 3,
+    "success_delta_percentage_points": 0.0,
+    "total_token_savings_percent": -17.239768061085996,
+    "note": "Small exploratory pilot; paper baselines are context, not matched controls.",
+    "cumulative_gateway_conservative_usd": 2.595705208,
+    "captured_events": 365,
+    "captured_actions": 183,
+    "delivered_blocks": 21,
+    "displayed_age_seconds": {
+      "median": 3,
+      "max": 47
+    },
+    "comparisons_to_solo": {
+      "baseline": {
+        "completion_delta_percentage_points": -20.0,
+        "token_reduction_percent": -66.61162027425762
+      },
+      "trails": {
+        "completion_delta_percentage_points": -20.0,
+        "token_reduction_percent": -95.33507717235696
+      }
+    }
+  },
+  "pairs": [
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "runtime": {
+        "repository": "pallets_jinja_task",
+        "task_id": 1621,
+        "features": [
+          1,
+          6
+        ],
+        "base_commit": "a2920752fd111c2d52c88eb57487667b3cf0ea7b",
+        "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9"
+      },
+      "baseline": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 1200305,
+        "input_tokens": 1179156,
+        "output_tokens": 21149,
+        "conservative_usd": 0.017649436,
+        "provider_reported_usd": 0.016560156,
+        "seconds": 137.1238677080255,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "92298fbafcc5823b5bbb382c6c9f39e77dc9906ed1f7ce93f298a150e922bfb5",
+        "evaluation_signature": "39cdc5338dcb30c8584abc6be6fa3104817e345262f589a9a5ab7615e0f0d4b3"
+      },
+      "trails": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 1006522,
+        "input_tokens": 990243,
+        "output_tokens": 16279,
+        "conservative_usd": 0.014080958000000001,
+        "provider_reported_usd": 0.013137342,
+        "seconds": 107.67798308306374,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "a5f4da7137b99e54626522017cb93362d047ad67c3207daf869aaf4434b64c8a",
+        "evaluation_signature": "39cdc5338dcb30c8584abc6be6fa3104817e345262f589a9a5ab7615e0f0d4b3"
+      },
+      "solo": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 911024,
+        "input_tokens": 897993,
+        "output_tokens": 13031,
+        "conservative_usd": 0.011903458,
+        "provider_reported_usd": 0.011053026,
+        "seconds": 260.6400910001248,
+        "agent_count": 1,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "d466d3d717e16b08112028cd85af9e44417cdb18bf413888b18640dcfc4da70e",
+        "evaluation_signature": "39cdc5338dcb30c8584abc6be6fa3104817e345262f589a9a5ab7615e0f0d4b3"
+      }
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "runtime": {
+        "repository": "pallets_jinja_task",
+        "task_id": 1621,
+        "features": [
+          2,
+          9
+        ],
+        "base_commit": "a2920752fd111c2d52c88eb57487667b3cf0ea7b",
+        "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9"
+      },
+      "baseline": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 1000391,
+        "input_tokens": 984389,
+        "output_tokens": 16002,
+        "conservative_usd": 0.013907334,
+        "provider_reported_usd": 0.012973702,
+        "seconds": 152.123028999893,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "4b0c5b3b63296607810c15929990b82e539e704d34703c364798e466ce4a78ec",
+        "evaluation_signature": "65d49c98b12980854814f9e50d8b6115cfebf64b3efb211d4e6fd9cefbd9af4e"
+      },
+      "trails": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 689767,
+        "input_tokens": 677276,
+        "output_tokens": 12491,
+        "conservative_usd": 0.48241741399999993,
+        "provider_reported_usd": 0.009674788,
+        "seconds": 170.55173495784402,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [
+          {
+            "actor": "intent-deepseek-shared-v1-cb-jinja-t1621-f2-9-r0-trails:agent2",
+            "status": 429,
+            "message": "litellm.RateLimitError: RateLimitError: OpenrouterException - {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"deepseek/deepseek-v4.1-flash-1017 is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Relace\",\"is_byok\":false,\"limit_source\":\"upstream_pr"
+          }
+        ],
+        "error": null,
+        "snapshot_sha256": "5f8b7668fc4ceba16e0899468d56a6b95197b8f5339ed2840143b89f1ae617fb",
+        "evaluation_signature": "65d49c98b12980854814f9e50d8b6115cfebf64b3efb211d4e6fd9cefbd9af4e"
+      },
+      "solo": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 797268,
+        "input_tokens": 786990,
+        "output_tokens": 10278,
+        "conservative_usd": 0.00986094,
+        "provider_reported_usd": 0.009107532,
+        "seconds": 174.49664145801216,
+        "agent_count": 1,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "dc1961f1300683d9b5a2b4a75e53cd60a111017b654eab70ac07fb8f53c08b3f",
+        "evaluation_signature": "65d49c98b12980854814f9e50d8b6115cfebf64b3efb211d4e6fd9cefbd9af4e"
+      }
+    },
+    {
+      "task": "cb-jinja-t1621-f4-7",
+      "runtime": {
+        "repository": "pallets_jinja_task",
+        "task_id": 1621,
+        "features": [
+          4,
+          7
+        ],
+        "base_commit": "a2920752fd111c2d52c88eb57487667b3cf0ea7b",
+        "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9"
+      },
+      "baseline": {
+        "success": false,
+        "features_passed": [
+          false,
+          true
+        ],
+        "tokens": 785654,
+        "input_tokens": 771854,
+        "output_tokens": 13800,
+        "conservative_usd": 0.011531124,
+        "provider_reported_usd": 0.010800500000000001,
+        "seconds": 92.83280137507245,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "6384fcf5f3e35832b1031e187219410b733afd02144c6e86f0fd29144983d93f",
+        "evaluation_signature": "f2d97b132b297cfc89f73a23a25cbb2f6c408ddae56d0a734fae034daf9ad1cb"
+      },
+      "trails": {
+        "success": false,
+        "features_passed": [
+          false,
+          true
+        ],
+        "tokens": 758348,
+        "input_tokens": 745831,
+        "output_tokens": 12517,
+        "conservative_usd": 0.010733486,
+        "provider_reported_usd": 0.010020014,
+        "seconds": 127.15202199993655,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "277b847ef8a60c2411112b55638b54467a7ba3de96126db6fae5376e7b7c21e1",
+        "evaluation_signature": "f2d97b132b297cfc89f73a23a25cbb2f6c408ddae56d0a734fae034daf9ad1cb"
+      },
+      "solo": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 214157,
+        "input_tokens": 209533,
+        "output_tokens": 4624,
+        "conservative_usd": 0.003569198,
+        "provider_reported_usd": 0.003373358,
+        "seconds": 98.60345791699365,
+        "agent_count": 1,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "bdc79faa0b36d010c81864e4ed83b54781ecffdb6581f282352c23202b60b584",
+        "evaluation_signature": "f2d97b132b297cfc89f73a23a25cbb2f6c408ddae56d0a734fae034daf9ad1cb"
+      }
+    },
+    {
+      "task": "cb-jinja-t1465-f1-3",
+      "runtime": {
+        "repository": "pallets_jinja_task",
+        "task_id": 1465,
+        "features": [
+          1,
+          3
+        ],
+        "base_commit": "20eb7f5e33120f1717b78bdf85540ab75631187a",
+        "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9"
+      },
+      "baseline": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 1039279,
+        "input_tokens": 1023738,
+        "output_tokens": 15541,
+        "conservative_usd": 0.013912928,
+        "provider_reported_usd": 0.012945248,
+        "seconds": 138.08756833313964,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "d1a72bee20f0e5e72d05828e12b14cb80d1844ac82e3f86fad93bf67ebb1d59e",
+        "evaluation_signature": "7c3c839f12bac4d8972e9ebc35b5c718ec1a5197bac560d76d377654445d39a9"
+      },
+      "trails": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 567726,
+        "input_tokens": 555755,
+        "output_tokens": 11971,
+        "conservative_usd": 0.00932003,
+        "provider_reported_usd": 0.008813149999999999,
+        "seconds": 108.15767575008795,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "97dcba3493bdb9bf1260d7d4aa5ec0b069ae6a4b2a967c1fc5ff74253e00f127",
+        "evaluation_signature": "7c3c839f12bac4d8972e9ebc35b5c718ec1a5197bac560d76d377654445d39a9"
+      },
+      "solo": {
+        "success": true,
+        "features_passed": [
+          true,
+          true
+        ],
+        "tokens": 296025,
+        "input_tokens": 289027,
+        "output_tokens": 6998,
+        "conservative_usd": 0.0052331619999999995,
+        "provider_reported_usd": 0.0049653860000000005,
+        "seconds": 113.23066658410244,
+        "agent_count": 1,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "1368bdb429f611a04595b2172af3eb7fbfb102289cf075b4ed0a2202527c120a",
+        "evaluation_signature": "7c3c839f12bac4d8972e9ebc35b5c718ec1a5197bac560d76d377654445d39a9"
+      }
+    },
+    {
+      "task": "cb-jinja-t1559-f1-3",
+      "runtime": {
+        "repository": "pallets_jinja_task",
+        "task_id": 1559,
+        "features": [
+          1,
+          3
+        ],
+        "base_commit": "896a62135bcc151f2997e028c5125bec2cb2431f",
+        "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9"
+      },
+      "baseline": {
+        "success": false,
+        "features_passed": [
+          true,
+          false
+        ],
+        "tokens": 1765551,
+        "input_tokens": 1748124,
+        "output_tokens": 17427,
+        "conservative_usd": 0.019202244,
+        "provider_reported_usd": 0.017524676000000003,
+        "seconds": 152.76039449987002,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "64020b0fdaebace16d672674a07abc5ef97f6f5de7ad00be5c6f35287d9fc1da",
+        "evaluation_signature": "e1c1a4cc98237d0a5cf5e8b42b05a139646e17d5b83206c7699614b06a6e4fe0"
+      },
+      "trails": {
+        "success": false,
+        "features_passed": [
+          true,
+          false
+        ],
+        "tokens": 3767203,
+        "input_tokens": 3733939,
+        "output_tokens": 33264,
+        "conservative_usd": 0.039035634,
+        "provider_reported_usd": 0.03550949,
+        "seconds": 322.0850417499896,
+        "agent_count": 2,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [],
+        "error": null,
+        "snapshot_sha256": "2c9afb4b5713a3a4016862b0ab823955d4d79eac12af56cc033dde3b593b78db",
+        "evaluation_signature": "e1c1a4cc98237d0a5cf5e8b42b05a139646e17d5b83206c7699614b06a6e4fe0"
+      },
+      "solo": {
+        "success": false,
+        "features_passed": [
+          false,
+          false
+        ],
+        "tokens": 1257382,
+        "input_tokens": 1245191,
+        "output_tokens": 12191,
+        "conservative_usd": 0.9999995599999999,
+        "provider_reported_usd": 0.012366518,
+        "seconds": 235.55672537488863,
+        "agent_count": 1,
+        "task_budget_usd": 1.0,
+        "task_iteration_allowance": 200,
+        "wall_limit_seconds": 900,
+        "upstream_errors": [
+          {
+            "actor": "intent-deepseek-solo-v1-cb-jinja-t1559-f1-3-r0-solo:agent1",
+            "status": 429,
+            "message": "litellm.RateLimitError: RateLimitError: OpenrouterException - {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"deepseek/deepseek-v4.1-flash-1017 is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Relace\",\"is_byok\":false,\"limit_source\":\"upstream_pr"
+          },
+          {
+            "actor": "intent-deepseek-solo-v1-cb-jinja-t1559-f1-3-r0-solo:agent1",
+            "status": 429,
+            "message": "litellm.RateLimitError: RateLimitError: OpenrouterException - {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"deepseek/deepseek-v4.1-flash-1017 is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Relace\",\"is_byok\":false,\"limit_source\":\"upstream_pr"
+          },
+          {
+            "actor": "intent-deepseek-solo-v1-cb-jinja-t1559-f1-3-r0-solo:agent1",
+            "status": 429,
+            "message": "litellm.RateLimitError: RateLimitError: OpenrouterException - {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"deepseek/deepseek-v4.1-flash-1017 is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Relace\",\"is_byok\":false,\"limit_source\":\"upstream_pr"
+          }
+        ],
+        "error": null,
+        "snapshot_sha256": "c92bf96a30fba0b9556535ef9ebbab87f3ecd7464ca13b1300724d9858843afd",
+        "evaluation_signature": "e1c1a4cc98237d0a5cf5e8b42b05a139646e17d5b83206c7699614b06a6e4fe0"
+      }
+    }
+  ],
+  "solo_validation": [
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "mode": "oracle",
+      "signature": "3671cec04b0912dee8db4443b780d6d5e9fd6c0987a6381e6e53bbb27dcba61e",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6",
+      "implementation_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6"
+    },
+    {
+      "task": "cb-jinja-t1621-f1-6",
+      "mode": "untouched",
+      "signature": "3671cec04b0912dee8db4443b780d6d5e9fd6c0987a6381e6e53bbb27dcba61e",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "mode": "oracle",
+      "signature": "3ef61bceb4de71d18f2c9bfd8b6e4e5c63a721d6f7b207cb30a57b702e1a8535",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6",
+      "implementation_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6"
+    },
+    {
+      "task": "cb-jinja-t1621-f2-9",
+      "mode": "untouched",
+      "signature": "3ef61bceb4de71d18f2c9bfd8b6e4e5c63a721d6f7b207cb30a57b702e1a8535",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "task": "cb-jinja-t1621-f4-7",
+      "mode": "oracle",
+      "signature": "fcdeef939f86581fdd8eb7c0af5832a3cea06646e5debefa47465d7c1cc330be",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6",
+      "implementation_sha256": "49e13cd5cdc04166bc89bf35e8837e5ad6d6204cc3ba6c640fd50ecec1d804e6"
+    },
+    {
+      "task": "cb-jinja-t1621-f4-7",
+      "mode": "untouched",
+      "signature": "fcdeef939f86581fdd8eb7c0af5832a3cea06646e5debefa47465d7c1cc330be",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "task": "cb-jinja-t1465-f1-3",
+      "mode": "oracle",
+      "signature": "1d26f7a16ed4f88f2b8987390d301f156db33ae0daa8d29ac4f796cb34ef9624",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "9fe8f1c1cf54ea9961badac42d532306a99a0089578a69d660f33e39d7ccef79",
+      "implementation_sha256": "9fe8f1c1cf54ea9961badac42d532306a99a0089578a69d660f33e39d7ccef79"
+    },
+    {
+      "task": "cb-jinja-t1465-f1-3",
+      "mode": "untouched",
+      "signature": "1d26f7a16ed4f88f2b8987390d301f156db33ae0daa8d29ac4f796cb34ef9624",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "task": "cb-jinja-t1559-f1-3",
+      "mode": "oracle",
+      "signature": "cd137ae2a6c5efbe310ac092fa8b4b82e749ea836d89e943bdeb4281cc1a9a47",
+      "reward": 1,
+      "feature1_passed": true,
+      "feature2_passed": true,
+      "feature_exit_codes": [
+        0,
+        0
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "9d382841c9377c907263b160682426ad819e0f702408461e69893af831a31849",
+      "implementation_sha256": "9d382841c9377c907263b160682426ad819e0f702408461e69893af831a31849"
+    },
+    {
+      "task": "cb-jinja-t1559-f1-3",
+      "mode": "untouched",
+      "signature": "cd137ae2a6c5efbe310ac092fa8b4b82e749ea836d89e943bdeb4281cc1a9a47",
+      "reward": 0,
+      "feature1_passed": false,
+      "feature2_passed": false,
+      "feature_exit_codes": [
+        1,
+        1
+      ],
+      "workspace_mode": "shared",
+      "strategy": "shared-snapshot",
+      "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "implementation_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "infrastructure_retry": {
+    "experiment_id": "intent-deepseek-solo-translation-retry-v1",
+    "policy": "One infrastructure retry after three 429s exhausted the original ledger allowance. Original first-attempt metrics are unchanged, regardless of retry result.",
+    "success": false,
+    "features_passed": [
+      true,
+      false
+    ],
+    "model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+    "runtime": {
+      "repository": "pallets_jinja_task",
+      "task_id": 1559,
+      "features": [
+        1,
+        3
+      ],
+      "base_commit": "896a62135bcc151f2997e028c5125bec2cb2431f",
+      "image": "akhatua/cooperbench-pallets-jinja@sha256:afffe5e618b0c1aea743ec08f938e286d093ffc1d90c4e6651ae21c3e46a3ce9"
+    },
+    "task_budget_usd": 1.0,
+    "iterations": 200,
+    "wall_limit_seconds": 900,
+    "seconds": 216.35527708311565,
+    "provider_reported_usd": 0.013680784,
+    "ledger_upper_usd": 0.9999998039999999,
+    "error": null,
+    "tokens": 1399084,
+    "upstream_errors": [
+      {
+        "actor": "intent-deepseek-solo-translation-retry-v1-cb-jinja-t1559-f1-3-r0-solo:agent1",
+        "status": 429,
+        "message": "litellm.RateLimitError: RateLimitError: OpenrouterException - {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"deepseek/deepseek-v4.1-flash-1017 is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Relace\",\"is_byok\":false,\"limit_source\":\"upstream_pr"
+      },
+      {
+        "actor": "intent-deepseek-solo-translation-retry-v1-cb-jinja-t1559-f1-3-r0-solo:agent1",
+        "status": 429,
+        "message": "litellm.RateLimitError: RateLimitError: OpenrouterException - {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"deepseek/deepseek-v4.1-flash-1017 is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Relace\",\"is_byok\":false,\"limit_source\":\"upstream_pr"
+      },
+      {
+        "actor": "intent-deepseek-solo-translation-retry-v1-cb-jinja-t1559-f1-3-r0-solo:agent1",
+        "status": 429,
+        "message": "litellm.RateLimitError: RateLimitError: OpenrouterException - {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"deepseek/deepseek-v4.1-flash-1017 is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Relace\",\"is_byok\":false,\"limit_source\":\"upstream_pr"
+      }
+    ],
+    "snapshot_sha256": "431e65c0a7f0336615db703375b47f4c7dd0b78b5c81c69ecdcca66276268e13"
+  },
+  "solo_audit": {
+    "actors": [
+      {
+        "episode": "intent-deepseek-solo-v1-cb-jinja-t1621-f1-6-r0-solo",
+        "task": "cb-jinja-t1621-f1-6",
+        "actions": 24,
+        "tools": {
+          "terminal": 19,
+          "trail_file_editor": 5
+        },
+        "emitted_finish": false,
+        "sdk_returned_normally": true,
+        "iteration_stop": false,
+        "stuck_stop": false,
+        "both_feature_requests_in_user_message": true,
+        "private_sdk_state": true
+      },
+      {
+        "episode": "intent-deepseek-solo-v1-cb-jinja-t1621-f2-9-r0-solo",
+        "task": "cb-jinja-t1621-f2-9",
+        "actions": 30,
+        "tools": {
+          "terminal": 22,
+          "trail_file_editor": 8
+        },
+        "emitted_finish": false,
+        "sdk_returned_normally": true,
+        "iteration_stop": false,
+        "stuck_stop": false,
+        "both_feature_requests_in_user_message": true,
+        "private_sdk_state": true
+      },
+      {
+        "episode": "intent-deepseek-solo-v1-cb-jinja-t1621-f4-7-r0-solo",
+        "task": "cb-jinja-t1621-f4-7",
+        "actions": 13,
+        "tools": {
+          "terminal": 8,
+          "trail_file_editor": 5
+        },
+        "emitted_finish": false,
+        "sdk_returned_normally": true,
+        "iteration_stop": false,
+        "stuck_stop": false,
+        "both_feature_requests_in_user_message": true,
+        "private_sdk_state": true
+      },
+      {
+        "episode": "intent-deepseek-solo-v1-cb-jinja-t1465-f1-3-r0-solo",
+        "task": "cb-jinja-t1465-f1-3",
+        "actions": 20,
+        "tools": {
+          "terminal": 13,
+          "trail_file_editor": 7
+        },
+        "emitted_finish": false,
+        "sdk_returned_normally": true,
+        "iteration_stop": false,
+        "stuck_stop": false,
+        "both_feature_requests_in_user_message": true,
+        "private_sdk_state": true
+      },
+      {
+        "episode": "intent-deepseek-solo-v1-cb-jinja-t1559-f1-3-r0-solo",
+        "task": "cb-jinja-t1559-f1-3",
+        "actions": 40,
+        "tools": {
+          "terminal": 28,
+          "trail_file_editor": 12
+        },
+        "emitted_finish": false,
+        "sdk_returned_normally": false,
+        "iteration_stop": false,
+        "stuck_stop": false,
+        "both_feature_requests_in_user_message": true,
+        "private_sdk_state": true
+      }
+    ],
+    "lifecycle_events": 72,
+    "delivered_trail_blocks": 0,
+    "failed_suites": [
+      {
+        "task": "cb-jinja-t1559-f1-3",
+        "feature_index": 1,
+        "failed_tests": [
+          "tests/test_ext.py::TestInternationalization::test_trimmed - jinja2.exc...",
+          "tests/test_ext.py::TestInternationalization::test_trimmed_policy_override",
+          "tests/test_ext.py::TestInternationalization::test_trimmed_vars - jinja...",
+          "tests/test_ext.py::TestInternationalization::test_trimmed_varname_trimmed",
+          "tests/test_ext.py::TestInternationalization::test_extract_trimmed - As...",
+          "tests/test_ext.py::TestNewstyleInternationalization::test_context_block",
+          "tests/test_ext.py::TestNewstyleInternationalization::test_context_plural_block"
+        ],
+        "error_lines": [
+          "-     (...",
+          "E         ...Full output truncated (23 lines hidden), use '-vv' to show",
+          "jinja2.exceptions.TemplateSyntaxError: expected token ',', got 'num'",
+          "jinja2.exceptions.TemplateSyntaxError: expected token ',', got 'num'"
+        ]
+      },
+      {
+        "task": "cb-jinja-t1559-f1-3",
+        "feature_index": 2,
+        "failed_tests": [
+          "tests/test_ext.py::TestInternationalization::test_trimmed - jinja2.exc...",
+          "tests/test_ext.py::TestInternationalization::test_trimmed_policy_override",
+          "tests/test_ext.py::TestInternationalization::test_trimmed_vars - jinja...",
+          "tests/test_ext.py::TestInternationalization::test_trimmed_varname_trimmed",
+          "tests/test_ext.py::TestInternationalization::test_extract_trimmed - As...",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_basic_syntax",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_with_variables",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_variable_expression",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_with_trimmed",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_invalid_values",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_zero_value",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_large_values",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_negative_values",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_with_complex_pluralization",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_syntax_errors",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_with_newstyle_gettext",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_edge_cases",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_parameter_validation",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_fallback_behavior",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_maximum_limit",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_translation_found_stops_search",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_retries_until_translation_found",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_zero_calls_gettext_once",
+          "tests/test_ext.py::TestTranslationPriority::test_priority_is_not_a_template_variable"
+        ],
+        "error_lines": [
+          "jinja2.exceptions.UndefinedError: '_priority_gettext' is undefined",
+          "jinja2.exceptions.UndefinedError: '_priority_gettext' is undefined",
+          "jinja2.exceptions.UndefinedError: '_priority_gettext' is undefined",
+          "jinja2.exceptions.UndefinedError: '_priority_gettext' is undefined"
+        ]
+      }
+    ],
+    "requests": 128,
+    "largest_completion_tokens": 2832,
+    "unknown_usage_requests": 3
+  },
+  "costs": {
+    "additional_solo_settled_conservative_usd": 0.044133404,
+    "additional_solo_provider_reported_usd": 0.04086582,
+    "additional_solo_retained_usd": 0.9864329139999999,
+    "settled_conservative_usd_by_arm": {
+      "baseline": 0.076203066,
+      "trails": 0.083479264,
+      "solo": 0.044133404
+    },
+    "cumulative_gateway_upper_usd": 3.595705012
+  },
+  "limitations": [
+    "Solo appended after saved shared runs; not a concurrently randomized three-condition trial.",
+    "One repetition; five correlated feature pairs from three Jinja families.",
+    "Solo sees both requests immediately; each team agent starts with one feature and can communicate.",
+    "Dollars and SDK iterations match in aggregate; wall time matches but aggregate agent-seconds do not.",
+    "Failed and stopped attempts remain in completion and token metrics. The old recovered 429 remains flagged in shared trails.",
+    "Original solo translation received three 429 errors and then a spending-guard cutoff driven by retained reservations; it is not a clean negative capability test."
+  ]
+}
