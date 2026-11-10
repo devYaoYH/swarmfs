@@ -26,6 +26,7 @@ class Budget:
         if not 0 < total <= 4 or not 0 < per_agent <= total:
             raise ValueError("pilot limits must be positive and at most $4")
         self.path, self.total, self.per_agent = path, total, per_agent
+        self.agent_limits: dict[str, float] = {}
         self.model = model
         if provider_max_output_tokens is not None and (
             type(provider_max_output_tokens) is not int or provider_max_output_tokens < 1
@@ -58,6 +59,7 @@ class Budget:
             yield db
 
     def reserve(self, actor: str, payload: dict) -> str:
+        limit = self.agent_limits.get(actor, self.per_agent)
         if payload.get("model") != self.model:
             raise ValueError("only the explicitly requested model is permitted")
         if payload.get("previous_response_id") or payload.get("conversation"):
@@ -102,7 +104,7 @@ class Budget:
                 # No fixed response-length ceiling: spend up to the endpoint's native
                 # capacity, reduced only by the remaining dollar allowance. Reserve
                 # and choose the output bound atomically across concurrent actors.
-                remaining = min(self.total - total, self.per_agent - spent)
+                remaining = min(self.total - total, limit - spent)
                 output = min(
                     self.provider_max_output_tokens,
                     math.floor((remaining - input_reservation) / self.output_rate),
@@ -113,7 +115,7 @@ class Budget:
                 payload.pop("max_output_tokens", None)
                 payload["max_tokens"] = output
             reserved = input_reservation + output * self.output_rate
-            if total + reserved > self.total or spent + reserved > self.per_agent:
+            if total + reserved > self.total or spent + reserved > limit:
                 raise BudgetExceeded("pilot or per-agent spending allowance exhausted")
             db.execute(
                 "INSERT INTO requests (id, actor, reserved, charged, status, input_tokens, "
@@ -130,6 +132,12 @@ class Budget:
                 ),
             )
         return identity
+
+    def set_agent_limit(self, actor: str, limit: float):
+        """Host-assigned per-episode allowance; never controlled by API payloads."""
+        if not math.isfinite(limit) or not 0 < limit <= self.total:
+            raise ValueError("agent allowance must be positive and within the total cap")
+        self.agent_limits[actor] = limit
 
     def settle(self, identity: str, response: dict | None):
         # A disconnected/unknown upstream outcome retains the full reservation.

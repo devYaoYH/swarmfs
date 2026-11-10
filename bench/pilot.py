@@ -34,7 +34,36 @@ DEFAULT_BASE = "a2920752fd111c2d52c88eb57487667b3cf0ea7b"
 def config(path=None):
     cfg = tomllib.loads(Path(path or ROOT / "pilot.toml").read_text())
     workspace_mode(cfg)
+    experiment_arms(cfg)
     return cfg
+
+
+def experiment_arms(cfg):
+    arms = cfg.get("arms", ["baseline", "trails"])
+    if not arms or len(set(arms)) != len(arms) or set(arms) - {"baseline", "trails", "solo"}:
+        raise ValueError("arms must select distinct baseline, trails or solo conditions")
+    if "solo" in arms and workspace_mode(cfg) != "shared":
+        raise ValueError("solo requires shared snapshot verification")
+    return arms
+
+
+def arm_limits(cfg, arm):
+    solo = arm == "solo"
+    return {
+        "max_iterations": cfg.get("solo_max_iterations", 2 * cfg["max_iterations"])
+        if solo
+        else cfg["max_iterations"],
+        "per_agent_budget_usd": cfg.get("solo_budget_usd", 2 * cfg["per_agent_budget_usd"])
+        if solo
+        else cfg["per_agent_budget_usd"],
+        "agent_timeout_seconds": cfg["agent_timeout_seconds"],
+    }
+
+
+def task_variant(cfg):
+    if "solo" in experiment_arms(cfg):
+        return "solo" if experiment_arms(cfg) == ["solo"] else "shared-three-arm"
+    return workspace_mode(cfg)
 
 
 def workspace_mode(cfg):
@@ -53,6 +82,8 @@ def harness_manifest(cfg):
                 (ROOT / "bench/shared.py").read_bytes()
             ).hexdigest(),
         )
+    if "solo" in experiment_arms(cfg):
+        manifest["solo_protocol"] = "combined-features-v1"
     return manifest
 
 
@@ -115,8 +146,8 @@ def adapter_module():
 
 def task_paths(cfg):
     root = ARTIFACTS / "tasks"
-    if workspace_mode(cfg) == "shared":
-        root /= "shared"
+    if task_variant(cfg) != "isolated":
+        root /= task_variant(cfg)
     return [
         root / f"cb-jinja-t{p['task_id']}-f{p['features'][0]}-{p['features'][1]}"
         for p in cfg["pairs"]
@@ -159,6 +190,31 @@ def task_signature(task):
     ]:
         digest.update(str(path.relative_to(task)).encode() + b"\0" + path.read_bytes())
     return digest.hexdigest()
+
+
+def evaluation_signature(task):
+    """Compare test inputs across arms with intentionally different agent prompts."""
+    digest = hashlib.sha256()
+    for path in [task / "benchmark.json", *sorted((task / "tests").iterdir())]:
+        digest.update(str(path.relative_to(task)).encode() + b"\0" + path.read_bytes())
+    return digest.hexdigest()
+
+
+def prepare_solo(path, features):
+    folder = path / "environment/solo"
+    shutil.copytree(path / "environment/agent1", folder)
+    script = folder / "run_agent.py"
+    text = script.read_text()
+    for tool in ("send_message", "receive_message"):
+        text = text.replace(f'        Tool(name="{tool}"),\n', "")
+    script.write_text(text)
+    request = "You are the only agent. Implement BOTH feature requests in this checkout.\n"
+    request += "Deliver one integrated implementation and verify both features together.\n"
+    request += "There are no teammates, peer messages or visible activity trails.\n\n"
+    request += "\n\n".join(
+        f"## Feature {f.cooperbench_feature_id}\n\n{f.problem_statement}" for f in features
+    )
+    (folder / "instruction.md").write_text(request)
 
 
 def prepare(cfg=None):
@@ -289,6 +345,8 @@ def prepare(cfg=None):
                     marker, "from bench.intent_editor import TrailFileEditorTool\n" + marker
                 )
             )
+        if "solo" in experiment_arms(cfg):
+            prepare_solo(path, features)
         (path / "trail-protocol.txt").write_text(TRAIL_PROTOCOL)
         (path / "harness.json").write_text(json.dumps(harness_manifest(cfg), indent=2))
         shutil.copy(source / "runner.sh", path / "tests/runner.sh")
@@ -309,11 +367,21 @@ def prepare(cfg=None):
 
 
 def compose_file(
-    task: Path, output: Path, *, actors: dict, port: int, cfg: dict, reference_patch=None
+    task: Path,
+    output: Path,
+    *,
+    actors: dict,
+    port: int,
+    cfg: dict,
+    reference_patch=None,
+    arm="baseline",
 ):
     output.mkdir(parents=True, exist_ok=True)
     runtime = task_runtime(task, cfg)
     shared = workspace_mode(cfg) == "shared"
+    solo = arm == "solo"
+    if solo and (not shared or (actors and set(actors) != {"agent1"})):
+        raise ValueError("solo runs require exactly agent1 and shared snapshot verification")
     if reference_patch is not None and (not shared or actors):
         raise ValueError("reference patches are restricted to model-free shared controls")
     services = {
@@ -364,6 +432,8 @@ def compose_file(
             ]
         )
     for actor, token in actors.items():
+        folder = task / "environment" / ("solo" if solo else actor)
+        limits = arm_limits(cfg, arm) if solo else cfg
         services[actor] = {
             "image": runtime["image"],
             "platform": cfg["platform"],
@@ -377,15 +447,15 @@ def compose_file(
                 "TRAIL_GATEWAY": f"http://host.docker.internal:{port}",
                 "REDIS_URL": "redis://redis:6379",
                 "AGENTS": "agent1,agent2",
-                "AGENT_TIMEOUT": str(cfg["agent_timeout_seconds"]),
-                "MAX_ITERATIONS": str(cfg["max_iterations"]),
+                "AGENT_TIMEOUT": str(limits["agent_timeout_seconds"]),
+                "MAX_ITERATIONS": str(limits["max_iterations"]),
                 "PYTHONPATH": "/opt/swarm-src:/opt/swarm-bench",
                 "LITELLM_LOG": "ERROR",
             },
             "volumes": [
-                f"{task / 'environment' / actor / 'instruction.md'}:/agent/instruction.md:ro",
-                f"{task / 'environment' / actor / 'run_agent.py'}:/opt/cooperbench/run_agent.py:ro",
-                f"{task / 'environment' / actor / 'entrypoint.sh'}:/entrypoint.sh:ro",
+                f"{folder / 'instruction.md'}:/agent/instruction.md:ro",
+                f"{folder / 'run_agent.py'}:/opt/cooperbench/run_agent.py:ro",
+                f"{folder / 'entrypoint.sh'}:/entrypoint.sh:ro",
                 f"{ROOT / 'src'}:/opt/swarm-src:ro",
                 f"{ROOT / 'bench'}:/opt/swarm-bench/bench:ro",
                 f"{actor}_out:/agent_output",
@@ -403,6 +473,16 @@ def compose_file(
                 "redis": {"condition": "service_started"},
                 "init": {"condition": "service_completed_successfully"},
             }
+        if solo:
+            services[actor]["environment"].pop("REDIS_URL")
+            services[actor]["environment"]["AGENTS"] = "agent1"
+            services[actor]["depends_on"].pop("redis")
+    if "solo" in experiment_arms(cfg) and experiment_arms(cfg) == ["solo"]:
+        services.pop("redis")
+    if solo:
+        services.pop("redis", None)
+        services["main"]["volumes"].remove("agent2_out:/shared/agent2:ro")
+        volumes.pop("agent2_out")
     data = {
         "services": services,
         "volumes": volumes,
@@ -415,9 +495,8 @@ def compose_file(
 
 
 def validation_path(cfg):
-    return ARTIFACTS / (
-        "validation-shared.json" if workspace_mode(cfg) == "shared" else "validation.json"
-    )
+    suffix = "" if task_variant(cfg) == "isolated" else "-" + task_variant(cfg)
+    return ARTIFACTS / ("validation" + suffix + ".json")
 
 
 def evaluation_entry(task, cfg):
@@ -435,7 +514,7 @@ def evaluation_entry(task, cfg):
 
 def shared_control(task, cfg, mode):
     """Exercise the same init, read-only mount, snapshot and verifier as paid runs."""
-    output = ARTIFACTS / "validation-shared" / task.name / mode
+    output = ARTIFACTS / validation_path(cfg).stem / task.name / mode
     output.mkdir(parents=True, exist_ok=True)
     path = compose_file(
         task,
@@ -603,25 +682,26 @@ def run_pilot(cfg=None):
         for repetition in range(cfg["repetitions"]):
             for task_index, task in enumerate(tasks):
                 # Counterbalance arm order, including across repetitions.
-                arms = (
-                    ["baseline", "trails"]
-                    if (repetition + task_index) % 2 == 0
-                    else ["trails", "baseline"]
-                )
+                order = experiment_arms(cfg)
+                offset = (repetition + task_index) % len(order)
+                arms = order[offset:] + order[:offset]
                 for arm in arms:
                     episode = f"{cfg['experiment_id']}-{task.name}-r{repetition}-{arm}"
                     run_dir = output / episode
                     if (run_dir / "result.json").exists():
                         results.append(json.loads((run_dir / "result.json").read_text()))
                         continue
-                    actors = {name: new_token() for name in ("agent1", "agent2")}
+                    limits = arm_limits(cfg, arm)
+                    names = ("agent1",) if arm == "solo" else ("agent1", "agent2")
+                    actors = {name: new_token() for name in names}
                     for name, token in actors.items():
                         identity = episode + ":" + name
                         gateway.tokens[token] = identity
+                        budget.set_agent_limit(identity, limits["per_agent_budget_usd"])
                         if arm == "trails":
                             gateway.visible_actors.add(identity)
                     path = compose_file(
-                        task, run_dir, actors=actors, port=gateway.server_port, cfg=cfg
+                        task, run_dir, actors=actors, port=gateway.server_port, cfg=cfg, arm=arm
                     )
                     project = "swarm-" + str(len(results)) + "-" + str(os.getpid())
                     base = ["docker", "compose", "-p", project, "-f", str(path)]
@@ -637,10 +717,12 @@ def run_pilot(cfg=None):
                         "trail_protocol": TRAIL_PROTOCOL,
                         "workspace_mode": workspace_mode(cfg),
                         "workspace_harness": harness_manifest(cfg),
+                        "agent_count": len(actors),
+                        "evaluation_signature": evaluation_signature(task),
                         "runtime": task_runtime(task, cfg),
-                        "max_iterations": cfg["max_iterations"],
-                        "agent_timeout_seconds": cfg["agent_timeout_seconds"],
-                        "per_agent_budget_usd": cfg["per_agent_budget_usd"],
+                        **limits,
+                        "task_budget_usd": limits["per_agent_budget_usd"] * len(actors),
+                        "task_iteration_allowance": limits["max_iterations"] * len(actors),
                         "provider_max_output_tokens": cfg.get("provider_max_output_tokens"),
                         "max_output_tokens": cfg.get("max_output_tokens"),
                         "max_input_tokens": cfg.get("max_input_tokens", 100000),

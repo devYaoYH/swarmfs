@@ -138,3 +138,19 @@ def test_missing_output_limit_still_rejected_without_known_provider_capacity(mak
     body.pop("max_completion_tokens")
     with pytest.raises(ValueError):
         make_budget().reserve("a", body)
+
+
+def test_host_assigned_solo_allowance_keeps_team_and_global_caps(make_budget):
+    budget = make_budget(total=0.03, per_agent=0.01)
+    budget.set_agent_limit("solo", 0.02)
+    budget.reserve("solo", request())
+    budget.reserve("solo", request())
+    with pytest.raises(BudgetExceeded):
+        budget.reserve("solo", request())
+    budget.reserve("team", request(per_agent_budget_usd=10))
+    with pytest.raises(BudgetExceeded):
+        budget.reserve("team", request(per_agent_budget_usd=10))
+    assert budget.snapshot()["conservative_usd"] <= 0.03
+    for invalid in (0, -1, float("nan"), float("inf"), 0.031):
+        with pytest.raises(ValueError):
+            budget.set_agent_limit("solo", invalid)

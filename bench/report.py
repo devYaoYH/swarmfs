@@ -9,7 +9,8 @@ from statistics import median
 
 def summarize(results: list[dict], budget: dict) -> dict:
     arms = {}
-    for arm in ("baseline", "trails"):
+    names = [a for a in ("baseline", "trails", "solo") if any(r["arm"] == a for r in results)]
+    for arm in names:
         runs = [r for r in results if r["arm"] == arm]
         episodes = {r["episode"] for r in runs}
         actors = [a for a in budget["agents"] if a["actor"].rsplit(":", 1)[0] in episodes]
@@ -32,11 +33,12 @@ def summarize(results: list[dict], budget: dict) -> dict:
             "iteration_cutoff_agents": sum(r.get("iteration_cutoff_agents", 0) for r in runs),
             "stuck_cutoff_agents": sum(r.get("stuck_cutoff_agents", 0) for r in runs),
         }
-    matched = all(
-        {(r["task"], r["repetition"]) for r in results if r["arm"] == arm}
-        == {(r["task"], r["repetition"]) for r in results}
-        for arm in arms
-    ) and bool(results)
+    team = [r for r in results if r["arm"] in {"baseline", "trails"}]
+    matched = {r["arm"] for r in team} == {"baseline", "trails"} and all(
+        {(r["task"], r["repetition"]) for r in team if r["arm"] == arm}
+        == {(r["task"], r["repetition"]) for r in team}
+        for arm in ("baseline", "trails")
+    )
     settings = {
         json.dumps(
             {
@@ -58,14 +60,14 @@ def summarize(results: list[dict], budget: dict) -> dict:
             },
             sort_keys=True,
         )
-        for r in results
+        for r in team
     }
     matched = matched and len(settings) == 1
     delta = (
         arms["trails"]["success_percent"] - arms["baseline"]["success_percent"] if matched else None
     )
-    base_tokens = arms["baseline"]["input_tokens"] + arms["baseline"]["output_tokens"]
-    trail_tokens = arms["trails"]["input_tokens"] + arms["trails"]["output_tokens"]
+    base_tokens = sum(arms.get("baseline", {}).get(k, 0) for k in ("input_tokens", "output_tokens"))
+    trail_tokens = sum(arms.get("trails", {}).get(k, 0) for k in ("input_tokens", "output_tokens"))
     savings = 100 * (base_tokens - trail_tokens) / base_tokens if matched and base_tokens else None
     return {
         "arms": arms,

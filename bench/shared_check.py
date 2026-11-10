@@ -32,7 +32,7 @@ def wait_for(condition):
     return "terminal", {"command": "python3 -c " + shlex.quote(code)}
 
 
-def scripted_client():
+def scripted_client(*, solo=False, feature_ids=()):
     view = {"command": "view", "path": PROBE, "intent": "read", "intent_note": "Read peer edit"}
     scripts = {
         "agent1": [
@@ -67,13 +67,29 @@ def scripted_client():
             ("finish", {"message": "Read and extended agent1's shared file."}),
         ],
     }
-    calls = {"agent1": 0, "agent2": 0}
+    if solo:
+        scripts = {
+            "agent1": [
+                scripts["agent1"][0],
+                scripts["agent2"][2],
+                scripts["agent1"][2],
+                ("finish", {"message": "Both changes done."}),
+            ]
+        }
+    calls = {a: 0 for a in scripts}
 
     def completion(**request):
         system = json.dumps([m for m in request["messages"] if m["role"] == "system"])
-        actor = next(a for a in scripts if f"You are {a} " in system)
+        actor = "agent1" if solo else next(a for a in scripts if f"You are {a} " in system)
         assert "separate, isolated workspaces" not in system
-        assert "ONE SHARED working tree" in system
+        if solo:
+            assert "ONE SHARED working tree" not in system
+            names = {t["function"]["name"] for t in request.get("tools", [])}
+            assert not names & {"send_message", "receive_message"}
+            prompt = json.dumps(request["messages"])
+            assert all(f"## Feature {i}" in prompt for i in feature_ids)
+        else:
+            assert "ONE SHARED working tree" in system
         step = calls[actor]
         name, arguments = scripts[actor][step]
         calls[actor] += 1
@@ -114,11 +130,14 @@ def shared_check(cfg):
     output = ARTIFACTS / "shared-check" / uuid.uuid4().hex
     task = output / "task"
     shutil.copytree(source, task)
-    for actor in ("agent1", "agent2"):
-        (task / "environment" / actor / "instruction.md").write_text(
-            "Offline shared-file validation. Follow the scripted tool calls."
-        )
-    client, calls = scripted_client()
+    solo = cfg.get("arms") == ["solo"]
+    names = ("agent1",) if solo else ("agent1", "agent2")
+    if not solo:
+        for actor in names:
+            (task / "environment" / actor / "instruction.md").write_text(
+                "Offline shared-file validation. Follow the scripted tool calls."
+            )
+    client, calls = scripted_client(solo=solo, feature_ids=cfg["pairs"][0]["features"])
     budget = Budget(
         str(output / "mock-budget.db"),
         model=client.config.model,
@@ -128,7 +147,7 @@ def shared_check(cfg):
         per_agent=0.50,
         provider_max_output_tokens=8192,
     )
-    actors = {a: new_token() for a in ("agent1", "agent2")}
+    actors = {a: new_token() for a in names}
     gateway = Gateway(
         ("0.0.0.0", 0),
         trails=TrailStore(str(output / "trails.db")),
@@ -137,10 +156,18 @@ def shared_check(cfg):
         tokens={token: "check:" + a for a, token in actors.items()},
         workspace_mode="shared",
     )
-    gateway.visible_actors.update(gateway.tokens.values())
+    if not solo:
+        gateway.visible_actors.update(gateway.tokens.values())
     threading.Thread(target=gateway.serve_forever, daemon=True).start()
-    cfg = {**cfg, "max_iterations": 12, "agent_timeout_seconds": 120}
-    path = compose_file(task, output, actors=actors, port=gateway.server_port, cfg=cfg)
+    cfg = {**cfg, "max_iterations": 12, "solo_max_iterations": 12, "agent_timeout_seconds": 120}
+    path = compose_file(
+        task,
+        output,
+        actors=actors,
+        port=gateway.server_port,
+        cfg=cfg,
+        arm="solo" if solo else "trails",
+    )
     base = ["docker", "compose", "-p", f"swarm-shared-check-{os.getpid()}", "-f", str(path)]
     try:
         command([*base, "up", "-d"], log=output / "startup.log")
@@ -171,11 +198,12 @@ def shared_check(cfg):
             "Path('/logs/verifier/final.patch').write_bytes(patch)\n"
         )
         command([*base, "exec", "-T", "main", "python3", "-c", code], log=output / "snapshot.log")
-        assert calls == {"agent1": 4, "agent2": 4}, calls
+        assert calls == dict.fromkeys(names, 4), calls
         assert not gateway.errors, gateway.errors
         result = {
             "passed": True,
             "model_calls": 0,
+            "agent_count": len(names),
             "scripted_replies": calls,
             "shared_file_roundtrip": True,
             "private_sdk_state": True,

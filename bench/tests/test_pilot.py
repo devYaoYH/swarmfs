@@ -145,3 +145,52 @@ def test_pilot_rejects_an_old_workspace_manifest_before_credentials(tmp_path, mo
     monkeypatch.setattr(pilot, "model_client", forbidden)
     with pytest.raises(RuntimeError, match="workspace harness changed"):
         pilot.run_pilot(cfg)
+
+
+def test_solo_gets_both_requests_without_messaging_or_a_second_container(tmp_path):
+    from types import SimpleNamespace
+
+    from bench.pilot import arm_limits, prepare_solo
+
+    original = tmp_path / "environment/agent1"
+    original.mkdir(parents=True)
+    (original / "run_agent.py").write_text(
+        'tools = [\n        Tool(name="terminal"),\n'
+        '        Tool(name="send_message"),\n        Tool(name="receive_message"),\n]\n'
+    )
+    (original / "entrypoint.sh").write_text("entrypoint")
+    (original / "instruction.md").write_text("First feature only")
+    features = [
+        SimpleNamespace(cooperbench_feature_id=i, problem_statement=f"Request {i}") for i in (1, 6)
+    ]
+    prepare_solo(tmp_path, features)
+    prompt = (tmp_path / "environment/solo/instruction.md").read_text()
+    assert "Request 1" in prompt and "Request 6" in prompt and "only agent" in prompt
+    assert (original / "instruction.md").read_text() == "First feature only"
+    assert (
+        'Tool(name="send_message")' not in (tmp_path / "environment/solo/run_agent.py").read_text()
+    )
+    cfg = {
+        "workspace_mode": "shared",
+        "arms": ["solo"],
+        "image": "pinned",
+        "platform": "linux/amd64",
+        "max_iterations": 100,
+        "per_agent_budget_usd": 0.5,
+        "agent_timeout_seconds": 900,
+    }
+    assert arm_limits(cfg, "solo") == {
+        "max_iterations": 200,
+        "per_agent_budget_usd": 1,
+        "agent_timeout_seconds": 900,
+    }
+    services = yaml.safe_load(
+        compose_file(
+            tmp_path, tmp_path / "run", actors={"agent1": "a"}, port=1, cfg=cfg, arm="solo"
+        ).read_text()
+    )["services"]
+    assert set(services) == {"init", "main", "agent1"}
+    assert "REDIS_URL" not in services["agent1"]["environment"]
+    assert services["agent1"]["environment"]["AGENTS"] == "agent1"
+    assert services["agent1"]["environment"]["MAX_ITERATIONS"] == "200"
+    assert any("environment/solo/instruction.md" in str(v) for v in services["agent1"]["volumes"])

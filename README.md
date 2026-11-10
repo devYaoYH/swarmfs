@@ -94,6 +94,12 @@ separate patches. The original profiles retain isolated workspaces.
 Offline validation passed the two-agent SDK check, all ten feature-pair controls
 and 76 tests. The first paid shared-workspace pilot is reported below.
 
+The [three-condition experiment](docs/three-arm-experiment.md) adds a single agent
+implementing both features, alongside shared control and shared trails. Use
+[`bench/configs/openrouter-solo.toml`](bench/configs/openrouter-solo.toml) to extend
+saved team runs, or [`bench/configs/openrouter-three-arm.toml`](bench/configs/openrouter-three-arm.toml)
+to run all three conditions afresh.
+
 ## Preliminary benchmark results
 
 DeepSeek V4.1 Flash 1017, pinned Relace FP4 route, the same five feature pairs across

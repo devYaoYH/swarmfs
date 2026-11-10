@@ -5,6 +5,8 @@
 - [Run CooperBench locally](benchmark.md): setup, controls, model and spending.
 - [Shared-workspace experiment](shared-workspace.md): one live checkout, private
   conversations, model-free SDK checks and snapshot verification.
+- [Three-condition experiment](three-arm-experiment.md): shared control, shared trails
+  and one agent implementing both features with equal task-level allowances.
 - [Shared-workspace offline validation](results/shared-workspace-validation-2026-11-09.json).
 - [Model and provider configuration](models.md): LiteLLM SDK, OpenRouter and smoke checks.
 - [Shared DeepSeek pilot and historical comparison](results/deepseek-shared-pilot-2026-11-09.md):
